@@ -197,6 +197,62 @@ MediaPicker::make('cover_image')
     }),
 ```
 
+### 8. 字段级磁盘
+
+默认上传到全局配置的磁盘（`MEDIA_DISK`）。个别字段可覆盖：
+
+```php
+MediaPicker::make('cover_image')
+    ->disk('private_s3'), // 该字段的上传写入指定磁盘
+```
+
+### 9. 私有写、公有读（CDN / 公开域名）
+
+典型场景：文件存储在**私有**磁盘（或私有 bucket），但对外通过 **CDN / 公开域名**访问。默认配置下 `Storage::url()` 返回的私有地址会 403。
+
+本包支持两种方式：
+
+**方式一：配置公开域名前缀（最简单）**
+
+```env
+MEDIA_PUBLIC_URL=https://cdn.example.com
+```
+
+所有媒体的 `url` 属性将解析为 `https://cdn.example.com/{存储路径}`，与底层磁盘的可见性无关。文件仍在私有磁盘，对外走公开域名。
+
+> 提示：如果磁盘本身已配置了公开地址（如 S3 的 `AWS_URL` 或 R2 的公开 bucket 域名），`Storage::url()` 已经返回公开 URL，无需额外配置。
+
+**方式二：自定义 URL 解析器**
+
+```php
+// config/filament-media-library.php
+'url_resolver' => \App\Support\MyUrlResolver::class,
+```
+
+```php
+use Xpier\FilamentMediaLibrary\Support\MediaUrlResolver;
+
+class MyUrlResolver implements MediaUrlResolver
+{
+    // 返回 null 时回退到默认 Storage::disk()->url() 行为
+    public function url(string $disk, string $path): ?string
+    {
+        return rtrim(config('cdn.base_url'), '/').'/'.ltrim($path, '/');
+    }
+}
+```
+
+也可以用签名 URL（临时 URL）实现私有读：
+
+```php
+public function url(string $disk, string $path): ?string
+{
+    return Storage::disk($disk)->temporaryUrl($path, now()->addMinutes(60));
+}
+```
+
+解析优先级：`url_resolver` 类 > `public_url` 前缀 > 默认 `Storage::url()`。
+
 ## 媒体库管理资源
 
 `/admin/media-library`：
@@ -254,6 +310,8 @@ php artisan vendor:publish --tag="filament-media-library-config"
 | `visibility` | `MEDIA_VISIBILITY` | `public` | 文件可见性 |
 | `image_process` | `MEDIA_COS_IMAGE_PROCESS` | `true` | COS 图片处理开关 |
 | `thumbnail_provider` | `MEDIA_THUMBNAIL_PROVIDER` | `LocalThumbnailProvider` | 缩略图 Provider 类 |
+| `public_url` | `MEDIA_PUBLIC_URL` | *(空)* | 公开 URL 前缀（CDN/公开域名），实现私有写公有读 |
+| `url_resolver` | `MEDIA_URL_RESOLVER` | *(空)* | 自定义 `MediaUrlResolver` 类，优先于 `public_url` |
 | `navigation_group` | `MEDIA_NAVIGATION_GROUP` | *(语言包)* | 导航分组；`null` 时回退到语言包 |
 | `navigation_sort` | `MEDIA_NAVIGATION_SORT` | `5` | 导航排序 |
 | `navigation_badge` | `MEDIA_NAVIGATION_BADGE` | `true` | 导航显示媒体数量徽章 |
@@ -348,16 +406,14 @@ Curator 是最接近的竞品 —— 媒体管理器 + 选择器 + 关系绑定 
 | `->multiple()` 多选 | ✅ | ✅（可带排序） |
 | RichEditor 附件按钮 | ✅ | ❌ *规划中* |
 | 图片编辑器（裁剪/缩放） | ✅ | ✅（FileUpload 内置） |
-| 字段级多磁盘 | ✅ | ❌ *规划中* |
-| 签名 URL | ✅ Glide | ❌（直连磁盘 URL） |
+| 字段级多磁盘 | ✅ | ✅ `->disk()` |
+| 签名 URL | ✅ Glide | ✅ 自定义 `MediaUrlResolver` |
 | 自定义属性 | ❌ | ✅ |
 | 中文 i18n | ❌ | ✅ |
 
 ## Roadmap
 
 - RichEditor「插入媒体」插件
-- 字段级 `disk()` 覆盖
-- 私有磁盘的签名/过期 URL
 - 测试套件 + CI（Pint + Pest）
 
 ## 发布流程

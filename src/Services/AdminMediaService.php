@@ -16,9 +16,10 @@ class AdminMediaService
         string $folder = 'general',
         string $type = MediaLibrary::TYPE_IMAGE,
         ?int $userId = null,
+        ?string $disk = null,
     ): MediaLibrary {
         $folder = $this->normalizeFolder($folder);
-        $disk = MediaLibrary::defaultDisk();
+        $disk = $disk ?: MediaLibrary::defaultDisk();
         $visibility = (string) config('filament-media-library.visibility', 'public');
         $directory = $this->buildDirectory($folder, $type);
         $extension = $file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'bin';

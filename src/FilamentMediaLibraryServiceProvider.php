@@ -3,8 +3,10 @@
 namespace Xpier\FilamentMediaLibrary;
 
 use Illuminate\Support\ServiceProvider;
-use Xpier\FilamentMediaLibrary\Support\ThumbnailProvider;
+use Xpier\FilamentMediaLibrary\Support\MediaUrlResolver;
+use Xpier\FilamentMediaLibrary\Support\Providers\CdnUrlResolver;
 use Xpier\FilamentMediaLibrary\Support\Providers\LocalThumbnailProvider;
+use Xpier\FilamentMediaLibrary\Support\ThumbnailProvider;
 
 class FilamentMediaLibraryServiceProvider extends ServiceProvider
 {
@@ -41,6 +43,30 @@ class FilamentMediaLibraryServiceProvider extends ServiceProvider
             $provider = (string) config('filament-media-library.thumbnail_provider', LocalThumbnailProvider::class);
 
             return $app->make($provider);
+        });
+
+        $this->app->singleton(MediaUrlResolver::class, function ($app) {
+            $resolver = (string) config('filament-media-library.url_resolver');
+
+            if ($resolver !== '') {
+                return $app->make($resolver);
+            }
+
+            $publicUrl = (string) config('filament-media-library.public_url');
+
+            if ($publicUrl !== '') {
+                return new CdnUrlResolver($publicUrl);
+            }
+
+            // No resolver configured: resolve to null so the model falls back
+            // to Storage::disk($disk)->url($path).
+            return new class implements MediaUrlResolver
+            {
+                public function url(string $disk, string $path): ?string
+                {
+                    return null;
+                }
+            };
         });
     }
 }

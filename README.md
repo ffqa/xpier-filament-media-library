@@ -204,6 +204,60 @@ MediaPicker::make('cover_image')
     }),
 ```
 
+#### Per-field disk
+
+Uploads default to the global disk (`MEDIA_DISK`). Override per field:
+
+```php
+MediaPicker::make('cover_image')
+    ->disk('private_s3'),
+```
+
+#### Private write, public read (CDN / public domain)
+
+Files live on a **private** disk (or private bucket) but are served through a **public CDN / domain**. By default `Storage::url()` returns the private address and public access 403s.
+
+**Option 1 — public URL prefix (simplest)**
+
+```env
+MEDIA_PUBLIC_URL=https://cdn.example.com
+```
+
+Every media `url` attribute resolves to `https://cdn.example.com/{path}`, regardless of the underlying disk's visibility. Files stay on the private disk; the public domain serves them.
+
+> Note: if the disk already has a public base URL configured (`AWS_URL` on S3, a public R2 bucket domain), `Storage::url()` already returns a public URL — nothing extra to configure.
+
+**Option 2 — custom URL resolver**
+
+```php
+// config/filament-media-library.php
+'url_resolver' => \App\Support\MyUrlResolver::class,
+```
+
+```php
+use Xpier\FilamentMediaLibrary\Support\MediaUrlResolver;
+
+class MyUrlResolver implements MediaUrlResolver
+{
+    // Return null to fall back to the default Storage::disk()->url() behavior
+    public function url(string $disk, string $path): ?string
+    {
+        return rtrim(config('cdn.base_url'), '/').'/'.ltrim($path, '/');
+    }
+}
+```
+
+Or signed (temporary) URLs for private reads:
+
+```php
+public function url(string $disk, string $path): ?string
+{
+    return Storage::disk($disk)->temporaryUrl($path, now()->addMinutes(60));
+}
+```
+
+Resolution order: `url_resolver` class > `public_url` prefix > default `Storage::url()`.
+
 **Uploads inside the picker** go through `AdminMediaService`, land in the currently-browsed folder, and can be edited (crop/resize) before storing thanks to the built-in image editor.
 
 ### 2. Media Library admin resource
@@ -264,6 +318,8 @@ php artisan vendor:publish --tag="filament-media-library-config"
 | `visibility` | `MEDIA_VISIBILITY` | `public` | File visibility |
 | `image_process` | `MEDIA_COS_IMAGE_PROCESS` | `true` | COS image processing toggle |
 | `thumbnail_provider` | `MEDIA_THUMBNAIL_PROVIDER` | `LocalThumbnailProvider` | Thumbnail URL generator class |
+| `public_url` | `MEDIA_PUBLIC_URL` | *(empty)* | Public URL prefix (CDN / public domain) for private-write/public-read setups |
+| `url_resolver` | `MEDIA_URL_RESOLVER` | *(empty)* | Custom `MediaUrlResolver` class; takes precedence over `public_url` |
 | `navigation_group` | `MEDIA_NAVIGATION_GROUP` | *(lang file)* | Nav group label; `null` → locale-aware fallback |
 | `navigation_sort` | `MEDIA_NAVIGATION_SORT` | `5` | Nav sort order |
 | `navigation_badge` | `MEDIA_NAVIGATION_BADGE` | `true` | Show media count badge |
@@ -358,15 +414,13 @@ Curator is the closest competitor — a Filament media manager with picker, rela
 | `->multiple()` picker | ✅ | ✅ (with pivot ordering) |
 | RichEditor attach button | ✅ | ❌ *roadmap* |
 | Image editor (crop/resize) | ✅ | ✅ (built-in FileUpload) |
-| Multi-disk per field | ✅ | ❌ *roadmap* |
-| Signed URLs | ✅ Glide | ❌ (disk URL) |
+| Multi-disk per field | ✅ | ✅ `->disk()` |
+| Signed URLs | ✅ Glide | ✅ custom `MediaUrlResolver` |
 | Custom properties | ❌ | ✅ |
 
 ## Roadmap
 
 - RichEditor "attach media" plugin
-- Per-field `disk()` override
-- Signed/expiring URLs for private disks
 - Test suite + CI (Pint + Pest)
 
 ## Publishing

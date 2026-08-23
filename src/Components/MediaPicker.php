@@ -47,6 +47,9 @@ class MediaPicker extends Field
     /** 'id' stores media_library.id; 'url' stores the resolved URL string (backward-compatible with URL/path columns). */
     protected string $storeMode = 'id';
 
+    /** Filesystem disk for uploads; falls back to the package config. */
+    protected string | Closure | null $disk = null;
+
     protected bool | Closure $isMultiple = false;
 
     /** Eloquent relationship name used to load/save the selected media (e.g. 'featuredImage', 'gallery'). */
@@ -88,6 +91,18 @@ class MediaPicker extends Field
         $this->storeMode = $mode;
 
         return $this;
+    }
+
+    public function disk(string | Closure | null $disk): static
+    {
+        $this->disk = $disk;
+
+        return $this;
+    }
+
+    public function getDisk(): string
+    {
+        return (string) ($this->evaluate($this->disk) ?: MediaLibrary::defaultDisk());
     }
 
     public function multiple(bool | Closure $condition = true): static
@@ -473,7 +488,7 @@ class MediaPicker extends Field
                     ->panelLayout('integrated')
                     ->extraAttributes(['class' => 'fi-media-picker-file-upload fi-media-picker-file-upload-slim'])
                     ->extraFieldWrapperAttributes(['class' => 'fi-media-picker-upload-hidden'])
-                    ->disk(MediaLibrary::defaultDisk())
+                    ->disk($this->getDisk())
                     ->directory(fn (Get $get): string => trim((string) config('filament-media-library.directory', 'media'), '/')
                         .'/library/'.$this->uploadFolderFromState($get('picker_folder')).'/'.($this->getMediaType() ?? 'file'))
                     ->visibility('public')
@@ -499,6 +514,7 @@ class MediaPicker extends Field
                             folder: $uploadFolder,
                             type: $this->getMediaType(),
                             userId: auth()->id(),
+                            disk: $this->getDisk(),
                         );
 
                         $set('selected_media_id', (string) $media->getKey());

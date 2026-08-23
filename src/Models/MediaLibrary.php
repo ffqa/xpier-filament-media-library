@@ -104,6 +104,13 @@ class MediaLibrary extends Model
             return null;
         }
 
+        $resolver = app(\Xpier\FilamentMediaLibrary\Support\MediaUrlResolver::class);
+        $resolved = $resolver->url($disk, $path);
+
+        if (filled($resolved)) {
+            return $resolved;
+        }
+
         return Storage::disk($disk)->url($path);
     }
 
