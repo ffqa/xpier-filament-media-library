@@ -76,6 +76,7 @@ return [
         'upload_disabled_search' => 'Cannot upload in search mode',
         'manage_folders' => 'Manage Folders',
         'items_count' => ':count items',
+        'selected_count' => ':count selected',
     ],
 
     'types' => [

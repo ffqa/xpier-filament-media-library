@@ -106,20 +106,19 @@ public static function form(Schema $schema): Schema
         MediaPicker::make('cover_image')
             ->label('Cover Image')
             ->module('articles')   // default folder code when uploading
-            ->mediaType('image')   // 'image' | 'file' | 'video' | null (all)
-            ->storeMode('id'),     // 'id' (default) | 'url'
+            ->mediaType('image'),  // 'image' | 'file' | 'video' | null (all)
     ]);
 }
 ```
 
-**Store modes**
+#### Store modes
 
 | Mode | What gets stored | Use case |
 |---|---|---|
 | `id` (default) | `media_library.id` | Referential integrity; resolve the URL at render time |
 | `url` | Resolved URL string | Legacy URL/path columns; decoupled from the library |
 
-**Media types**
+#### Media types
 
 | `mediaType()` | Filter | Upload accept |
 |---|---|---|
@@ -128,18 +127,84 @@ public static function form(Schema $schema): Schema
 | `'video'` | videos only | `video/mp4, webm, quicktime` |
 | `null` | everything | images + videos |
 
-**Uploads inside the picker** go through `AdminMediaService`, land in the currently-browsed folder, and can be edited (crop/resize) before storing thanks to the built-in image editor.
-
-**Reading the value back**
+#### Single selection with a BelongsTo relationship (recommended)
 
 ```php
-// storeMode('id') — resolve via the model:
-$media = MediaLibrary::find($post->cover_image);
-$url = $media?->url;
-
-// storeMode('url') — already a URL string:
-$url = $post->cover_image;
+// Form: the field name is arbitrary; relationship() points at a model relation
+MediaPicker::make('cover_image')
+    ->relationship('featuredImage'),
 ```
+
+```php
+// Model side (post table needs a featured_image_id foreign key column)
+use Xpier\FilamentMediaLibrary\Models\MediaLibrary;
+
+public function featuredImage(): BelongsTo
+{
+    return $this->belongsTo(MediaLibrary::class, 'featured_image_id');
+}
+```
+
+On save the related media is `associate`d (or set to `null` when nothing is selected); on open the value is loaded from the relationship. The field itself never writes a column (`dehydrated(false)`).
+
+```php
+$post->featuredImage?->url;
+```
+
+#### Multiple selection with a BelongsToMany relationship (galleries)
+
+```php
+// Form
+MediaPicker::make('gallery')
+    ->multiple()
+    ->relationship('galleryMedia')
+    ->orderColumn('order'), // optional: pivot order column, written in selection order
+```
+
+```php
+// Model side
+use Xpier\FilamentMediaLibrary\Models\MediaLibrary;
+
+public function galleryMedia(): BelongsToMany
+{
+    return $this->belongsToMany(MediaLibrary::class, 'post_media', 'post_id', 'media_id')
+        ->withPivot('order')
+        ->orderBy('order');
+}
+```
+
+On save the relationship is `sync`ed (adds, removals and ordering in one pass); on open the existing selection is loaded automatically.
+
+```php
+$urls = $post->galleryMedia->pluck('url');
+```
+
+#### Multiple selection without a relationship (JSON column)
+
+```php
+MediaPicker::make('cover_images')
+    ->multiple(), // state is an array of ids, written to the column directly
+```
+
+The column must be JSON and cast on the model:
+
+```php
+protected function casts(): array
+{
+    return ['cover_images' => 'array'];
+}
+```
+
+#### Customizing the media query
+
+```php
+MediaPicker::make('cover_image')
+    ->modifyMediaQueryUsing(function (Builder $query) {
+        $query->where('size', '>', 1024);
+    }),
+```
+
+**Uploads inside the picker** go through `AdminMediaService`, land in the currently-browsed folder, and can be edited (crop/resize) before storing thanks to the built-in image editor.
 
 ### 2. Media Library admin resource
 
@@ -265,7 +330,7 @@ Spatie is a **low-level storage layer** — it attaches files to your Eloquent m
 
 | Capability | spatie | xpier |
 |---|---|---|
-| Attach media to models | ✅ | Via stored `id`/`url` |
+| Attach media to models | ✅ | Via stored `id`/`url` or `->relationship()` |
 | Named collections | ✅ | Folder hierarchy instead |
 | Conversions / responsive images | ✅ (on-disk derived files) | On-demand via `ThumbnailProvider` |
 | Admin management UI | Pro version only | ✅ built-in |
@@ -289,8 +354,8 @@ Curator is the closest competitor — a Filament media manager with picker, rela
 | Folder hierarchy | ❌ (path generators only) | ✅ two-level |
 | Pick modal + search | ✅ | ✅ |
 | Soft deletes | ❌ | ✅ |
-| `->relationship()` picker | ✅ | ❌ *roadmap* |
-| `->multiple()` picker | ✅ | ❌ *roadmap* |
+| `->relationship()` picker | ✅ | ✅ (BelongsTo + BelongsToMany) |
+| `->multiple()` picker | ✅ | ✅ (with pivot ordering) |
 | RichEditor attach button | ✅ | ❌ *roadmap* |
 | Image editor (crop/resize) | ✅ | ✅ (built-in FileUpload) |
 | Multi-disk per field | ✅ | ❌ *roadmap* |
@@ -299,8 +364,6 @@ Curator is the closest competitor — a Filament media manager with picker, rela
 
 ## Roadmap
 
-- `->relationship()` support on `MediaPicker` (store id, auto-associate on save)
-- `->multiple()` multi-select picker with ordering
 - RichEditor "attach media" plugin
 - Per-field `disk()` override
 - Signed/expiring URLs for private disks

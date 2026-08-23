@@ -1,6 +1,8 @@
 @php
     $statePath = $getStatePath();
     $selected = $getState();
+    $isMultiple = $is_multiple ?? false;
+    $selectedIds = $isMultiple ? collect(Arr::wrap($selected))->map(fn ($id): string => (string) $id)->all() : [];
     $browser = $browser ?? [
         'current' => \Xpier\FilamentMediaLibrary\Components\MediaPicker::FOLDER_ROOT,
         'breadcrumbs' => [],
@@ -327,6 +329,10 @@
     </div>
 
     <p class="fi-mpg-meta">
+        @if ($isMultiple)
+            {{ __('filament-media-library::media-library.picker.selected_count', ['count' => count($selectedIds)]) }}
+            ·
+        @endif
         @if ($isSearch)
             {{ __('filament-media-library::media-library.picker.search_result_count', ['count' => $mediaCount]) }}
         @else
@@ -358,7 +364,9 @@
                     @else
                         @php
                             $id = (string) ($entry['id'] ?? '');
-                            $isSelected = filled($selected) && (string) $selected === $id;
+                            $isSelected = $isMultiple
+                                ? in_array($id, $selectedIds, true)
+                                : (filled($selected) && (string) $selected === $id);
                             $name = (string) ($entry['name'] ?? '');
                             $note = trim((string) ($entry['note'] ?? ''));
                             $tip = $note !== '' ? ($name."\n".$note) : $name;
@@ -366,7 +374,7 @@
                         <div class="fi-mpg-tile{{ $isSelected ? ' is-selected' : '' }}">
                             <label class="fi-mpg-media-label" title="{{ $tip }}">
                                 <input
-                                    type="radio"
+                                    type="{{ $isMultiple ? 'checkbox' : 'radio' }}"
                                     value="{{ $id }}"
                                     @checked($isSelected)
                                     {{ $applyStateBindingModifiers('wire:model') }}="{{ $statePath }}"

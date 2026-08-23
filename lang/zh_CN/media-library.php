@@ -76,6 +76,7 @@ return [
         'upload_disabled_search' => '搜索模式下不可上传',
         'manage_folders' => '管理目录',
         'items_count' => ':count 项',
+        'selected_count' => '已选 :count 项',
     ],
 
     'types' => [

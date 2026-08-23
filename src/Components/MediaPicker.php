@@ -11,7 +11,11 @@ use Filament\Forms\Components\ViewField;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Xpier\FilamentMediaLibrary\Filament\Resources\MediaFolderResource;
 use Xpier\FilamentMediaLibrary\Models\MediaFolder;
@@ -43,6 +47,17 @@ class MediaPicker extends Field
     /** 'id' stores media_library.id; 'url' stores the resolved URL string (backward-compatible with URL/path columns). */
     protected string $storeMode = 'id';
 
+    protected bool | Closure $isMultiple = false;
+
+    /** Eloquent relationship name used to load/save the selected media (e.g. 'featuredImage', 'gallery'). */
+    protected ?string $relationshipName = null;
+
+    /** Key column on the related MediaLibrary model used for load/save. */
+    protected string $relationshipKey = 'id';
+
+    /** Pivot column to persist ordering for BelongsToMany relationships. */
+    protected ?string $orderColumn = null;
+
     protected ?Closure $modifyMediaQueryUsing = null;
 
     protected function setUp(): void
@@ -73,6 +88,104 @@ class MediaPicker extends Field
         $this->storeMode = $mode;
 
         return $this;
+    }
+
+    public function multiple(bool | Closure $condition = true): static
+    {
+        $this->isMultiple = $condition;
+
+        return $this;
+    }
+
+    public function isMultiple(): bool
+    {
+        return (bool) $this->evaluate($this->isMultiple);
+    }
+
+    /**
+     * Bind the field to an Eloquent relationship so the selection is loaded from and
+     * saved to the related media instead of a plain column.
+     *
+     * Single (default): BelongsTo — the related media key is associated to the record.
+     * Multiple: BelongsToMany — related media are synced on save.
+     */
+    public function relationship(string $name, string $key = 'id'): static
+    {
+        $this->relationshipName = $name;
+        $this->relationshipKey = $key;
+
+        // The selection lives on the relationship, not on a model column.
+        $this->dehydrated(false);
+
+        $this->saveRelationshipsUsing(function (MediaPicker $component, Model $record, $state): void {
+            $relationship = $record->{$component->relationshipName}();
+
+            if ($relationship instanceof BelongsTo) {
+                $relationship->associate(blank($state) ? null : $state);
+                $record->save();
+
+                return;
+            }
+
+            if ($relationship instanceof BelongsToMany) {
+                $ids = array_values(array_filter(
+                    Arr::wrap($state),
+                    fn ($id): bool => filled($id) && is_numeric($id),
+                ));
+
+                if ($component->orderColumn !== null) {
+                    $relationship->sync(
+                        collect($ids)->mapWithKeys(fn ($id, $index): array => [
+                            $id => [$component->orderColumn => $index],
+                        ])->all()
+                    );
+                } else {
+                    $relationship->sync($ids);
+                }
+            }
+        });
+
+        $this->loadStateFromRelationshipsUsing(function (MediaPicker $component, $state): void {
+            if (filled($state)) {
+                return;
+            }
+
+            $record = $component->getRecord();
+            if (! $record instanceof Model) {
+                return;
+            }
+
+            $relationship = $record->{$component->relationshipName}();
+
+            if ($relationship instanceof BelongsToMany) {
+                $component->state(
+                    $relationship->pluck($component->relationshipKey)
+                        ->map(fn ($key): string => (string) $key)
+                        ->all()
+                );
+
+                return;
+            }
+
+            if ($relationship instanceof BelongsTo) {
+                $related = $relationship->getResults();
+                $component->state($related?->getAttribute($component->relationshipKey));
+            }
+        });
+
+        return $this;
+    }
+
+    public function orderColumn(string $column): static
+    {
+        $this->orderColumn = $column;
+
+        return $this;
+    }
+
+    public function getRelationshipName(): ?string
+    {
+        return $this->relationshipName;
     }
 
     public function modifyMediaQueryUsing(?Closure $callback): static
@@ -235,15 +348,54 @@ class MediaPicker extends Field
         ];
     }
 
+    /**
+     * @return list<array{id: int|string|null, url: string, thumb: string, name: string, note: string}>|array{id: int|string|null, url: string, thumb: string, name: string, note: string}|null
+     */
     public function getSelectedMedia(): ?array
     {
         $state = $this->getState();
+        $thumbnail = app(ThumbnailProvider::class);
+
+        if ($this->isMultiple()) {
+            $ids = collect(Arr::wrap($state))
+                ->filter(fn ($id): bool => filled($id) && is_numeric($id))
+                ->map(fn ($id): int => (int) $id)
+                ->values();
+
+            if ($ids->isEmpty()) {
+                return null;
+            }
+
+            $mediaById = MediaLibrary::query()
+                ->whereIn('id', $ids->all())
+                ->get()
+                ->keyBy('id');
+
+            return $ids
+                ->map(function (int $id) use ($mediaById, $thumbnail): ?array {
+                    $media = $mediaById->get($id);
+                    if (! $media instanceof MediaLibrary || blank($media->url)) {
+                        return null;
+                    }
+
+                    $url = (string) $media->url;
+
+                    return [
+                        'id' => $id,
+                        'url' => $url,
+                        'thumb' => $thumbnail->thumbnail($url, 480) ?: $url,
+                        'name' => $media->original_name ?: basename($media->path),
+                        'note' => (string) ($media->alt_text ?? ''),
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->all();
+        }
 
         if (blank($state)) {
             return null;
         }
-
-        $thumbnail = app(ThumbnailProvider::class);
 
         // Numeric state: resolve by media_library.id
         if (is_numeric($state)) {
@@ -291,7 +443,9 @@ class MediaPicker extends Field
             ->fillForm(fn (): array => [
                 'picker_folder' => $this->normalizeBrowserFolder($this->getModule()),
                 'search_query' => '',
-                'selected_media_id' => $this->getState() !== null ? (string) $this->getState() : null,
+                'selected_media_id' => $this->isMultiple()
+                    ? array_map(fn ($id): string => (string) $id, Arr::wrap($this->getState()) ?: [])
+                    : ($this->getState() !== null ? (string) $this->getState() : null),
             ])
             ->schema([
                 Hidden::make('picker_folder')
@@ -352,9 +506,9 @@ class MediaPicker extends Field
                     }),
                 ViewField::make('selected_media_id')
                     ->hiddenLabel()
-                    ->required()
+                    ->required(! $this->isMultiple())
                     ->live()
-                    ->view('filament-media-library::media-library.media-picker-grid')
+                    ->view('filament-media-library::media-picker-grid')
                     ->viewData(function (Get $get, ViewField $component): array {
                         $search = (string) ($get('search_query') ?? '');
                         $browser = $this->getBrowserState(
@@ -370,28 +524,50 @@ class MediaPicker extends Field
                             'browser' => $browser,
                             'folderStatePath' => $folderStatePath,
                             'searchStatePath' => $searchStatePath,
+                            'is_multiple' => $this->isMultiple(),
                             'foldersUrl' => MediaFolderResource::getUrl('index'),
                         ];
                     }),
             ])
             ->action(function (array $data): void {
-                $mediaId = $data['selected_media_id'] ?? null;
+                $selected = $data['selected_media_id'] ?? null;
 
-                if (blank($mediaId)) {
-                    $this->state(null);
+                if (! $this->isMultiple()) {
+                    if (blank($selected)) {
+                        $this->state(null);
+
+                        return;
+                    }
+
+                    $this->state($this->resolveStateValue((int) $selected));
 
                     return;
                 }
 
-                if ($this->storeMode === 'url') {
-                    $media = MediaLibrary::query()->find((int) $mediaId);
-                    $this->state($media instanceof MediaLibrary ? (string) $media->url : null);
+                $ids = collect(Arr::wrap($selected))
+                    ->filter(fn ($id): bool => filled($id) && is_numeric($id))
+                    ->map(fn ($id): int => (int) $id)
+                    ->values();
+
+                if ($ids->isEmpty()) {
+                    $this->state([]);
 
                     return;
                 }
 
-                $this->state((int) $mediaId);
+                $this->state($ids->map(fn (int $id): int|string => $this->resolveStateValue($id))->all());
             });
+    }
+
+    protected function resolveStateValue(int $mediaId): int|string
+    {
+        if ($this->storeMode === 'url') {
+            $media = MediaLibrary::query()->find($mediaId);
+
+            return $media instanceof MediaLibrary ? (string) $media->url : $mediaId;
+        }
+
+        return $mediaId;
     }
 
     protected function normalizeBrowserFolder(?string $folder): string
