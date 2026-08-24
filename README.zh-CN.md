@@ -265,6 +265,22 @@ public function url(string $disk, string $path): ?string
 
 **完整解析链**：`url_resolver` 类 → `public_urls[磁盘]` → `public_url` 全局默认 → `Storage::url()`。
 
+## 在 RichEditor 中插入媒体
+
+基于 Filament 自带的 RichEditor 插件机制（`RichContentPlugin`），不引入任何第三方编辑器库：
+
+```php
+use Xpier\FilamentMediaLibrary\Filament\RichEditor\AttachMediaPlugin;
+use Filament\Forms\Components\RichEditor;
+
+RichEditor::make('content')
+    ->plugins([
+        AttachMediaPlugin::make(),
+    ]),
+```
+
+工具栏出现「插入媒体」按钮 → 打开弹窗（内含 MediaPicker：目录浏览 / 搜索 / 上传）→ 选中图片插入到光标处（Tiptap image 节点，自动带上 `alt_text`）。已选中图片时按钮高亮。
+
 ## 媒体库管理资源
 
 `/admin/media-library`：
@@ -383,6 +399,15 @@ php artisan vendor:publish --tag="filament-media-library-views"
 | `media-picker.blade.php` | 字段外壳：预览、移除、打开选择器 |
 | `media-picker-grid.blade.php` | 弹窗浏览器：工具栏、面包屑、搜索、网格（CSS 全部内联） |
 
+## 测试
+
+```bash
+composer install        # 安装 testbench / phpunit
+vendor/bin/phpunit      # 运行测试套件
+```
+
+42 个测试覆盖：模型（软删除保留物理文件、彻底删除移除文件、事件派发、URL 解析、目录路径与嵌套校验）、上传服务（磁盘/可见性/目录规范化）、URL 解析器（按磁盘映射、全局回退、自定义类）、缩略图 Provider（本地直出、COS imageMogr2）、MediaPicker 组件（多选、relationship 钩子注册、字段级磁盘/可见性、选中媒体解析）。
+
 ## 与其他方案对比
 
 ### vs spatie/laravel-medialibrary
@@ -426,8 +451,7 @@ Curator 是最接近的竞品 —— 媒体管理器 + 选择器 + 关系绑定 
 
 ## Roadmap
 
-- RichEditor「插入媒体」插件
-- 测试套件 + CI（Pint + Pest）
+- 测试套件 + CI（Pint + Pest）已就绪 ✅ 下一步接 CI（GitHub Actions）
 
 ## 发布流程
 

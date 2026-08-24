@@ -30,13 +30,13 @@ class MediaFolder extends Model
     {
         static::saving(function (self $folder): void {
             if (blank($folder->code) && filled($folder->name)) {
-                $folder->code = Str::slug($folder->name) ?: 'folder-'.substr(md5($folder->name), 0, 8);
+                $folder->code = Str::slug($folder->name);
             }
             $folder->code = Str::of((string) $folder->code)
                 ->lower()
                 ->replaceMatches('/[^a-z0-9\-]+/', '-')
                 ->trim('-')
-                ->value() ?: 'folder';
+                ->value() ?: 'folder-'.substr(md5((string) $folder->name), 0, 8);
 
             if ($folder->parent_id !== null) {
                 $parent = $folder->parent_id === $folder->id

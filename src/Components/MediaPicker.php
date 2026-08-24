@@ -37,7 +37,7 @@ class MediaPicker extends Field
 
     public const FOLDER_SEARCH = '__search__';
 
-    protected string $view = 'filament-media-library::media-library.media-picker';
+    protected string $view = 'filament-media-library::media-picker';
 
     protected string | Closure | null $mediaType = MediaLibrary::TYPE_IMAGE;
 

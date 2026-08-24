@@ -92,4 +92,11 @@ return [
         'banners' => 'Banners',
     ],
 
+    'rich_editor' => [
+        'attach_media' => 'Insert Media',
+        'attach_media_heading' => 'Insert image from media library',
+        'select_media' => 'Select image',
+        'insert' => 'Insert',
+    ],
+
 ];

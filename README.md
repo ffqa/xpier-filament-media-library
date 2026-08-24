@@ -272,6 +272,22 @@ public function url(string $disk, string $path): ?string
 
 **Resolution chain:** `url_resolver` class → `public_urls[disk]` → `public_url` default → `Storage::url()`.
 
+## Inserting media in RichEditor
+
+Built on Filament's native RichEditor plugin mechanism (`RichContentPlugin`) — no third-party editor library:
+
+```php
+use Xpier\FilamentMediaLibrary\Filament\RichEditor\AttachMediaPlugin;
+use Filament\Forms\Components\RichEditor;
+
+RichEditor::make('content')
+    ->plugins([
+        AttachMediaPlugin::make(),
+    ]),
+```
+
+An "Insert Media" toolbar button opens a modal with a MediaPicker (folder browse / search / upload); picking an image inserts a Tiptap image node at the cursor with the media's `alt_text`. The button highlights when an image is selected.
+
 **Uploads inside the picker** go through `AdminMediaService`, land in the currently-browsed folder, and can be edited (crop/resize) before storing thanks to the built-in image editor.
 
 ### 2. Media Library admin resource
@@ -393,6 +409,15 @@ php artisan vendor:publish --tag="filament-media-library-views"
 | `media-picker.blade.php` | Field shell: preview, remove, picker action |
 | `media-picker-grid.blade.php` | Modal browser: toolbar, breadcrumbs, search, tiles (all CSS inline) |
 
+## Testing
+
+```bash
+composer install        # installs testbench / phpunit
+vendor/bin/phpunit      # runs the test suite
+```
+
+42 tests cover: models (soft delete keeps the physical file, force delete removes it, event dispatch, URL resolution, folder paths and nesting validation), the upload service (disk/visibility/folder normalization), URL resolvers (per-disk map, global fallback, custom class), thumbnail providers (local passthrough, COS imageMogr2), and the MediaPicker component (multiple, relationship hook registration, per-field disk/visibility, selected-media resolution).
+
 ## How it compares
 
 ### vs spatie/laravel-medialibrary
@@ -435,8 +460,7 @@ Curator is the closest competitor — a Filament media manager with picker, rela
 
 ## Roadmap
 
-- RichEditor "attach media" plugin
-- Test suite + CI (Pint + Pest)
+- CI pipeline for the test suite (GitHub Actions)
 
 ## Publishing
 

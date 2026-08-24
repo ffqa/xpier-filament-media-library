@@ -17,7 +17,7 @@ class CosThumbnailProvider implements ThumbnailProvider
             return $url;
         }
 
-        if (! config('media-library.image_process', true)) {
+        if (! config('filament-media-library.image_process', true)) {
             return $url;
         }
 

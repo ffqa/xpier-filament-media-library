@@ -25,7 +25,15 @@
         "filament/filament": "^5.3"
     },
     "require-dev": {
-        "laravel/pint": "^1.21"
+        "laravel/pint": "^1.21",
+        "livewire/livewire": "~4.2.0",
+        "orchestra/testbench": "^10.0",
+        "phpunit/phpunit": "^11.5"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Xpier\\FilamentMediaLibrary\\Tests\\": "tests/"
+        }
     },
     "autoload": {
         "psr-4": {

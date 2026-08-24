@@ -92,4 +92,11 @@ return [
         'banners' => '横幅',
     ],
 
+    'rich_editor' => [
+        'attach_media' => '插入媒体',
+        'attach_media_heading' => '从媒体库插入图片',
+        'select_media' => '选择图片',
+        'insert' => '插入',
+    ],
+
 ];
