@@ -11,6 +11,16 @@ return [
     'visibility' => env('MEDIA_VISIBILITY', 'public'),
 
     /**
+     * Deletion mode of the "delete" action on the Media Library resource.
+     *
+     * - 'soft' (default): the record is soft-deleted (visible under the
+     *   Trashed filter, restorable). Whether the physical file is removed
+     *   is controlled by 'delete_file_on_delete'.
+     * - 'physical': the record and its physical file are deleted immediately.
+     */
+    'delete_mode' => env('MEDIA_DELETE_MODE', 'soft'),
+
+    /**
      * Whether a soft delete also removes the physical file from the disk.
      * Enabled by default so deleted media URLs stop resolving immediately;
      * disable to keep files so restored records keep working URLs.

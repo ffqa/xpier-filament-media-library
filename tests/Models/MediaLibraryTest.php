@@ -118,6 +118,27 @@ class MediaLibraryTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists('media/soft-delete-keep.png'));
     }
 
+    public function test_physical_delete_mode_removes_record_and_file_immediately(): void
+    {
+        config()->set('filament-media-library.delete_mode', 'physical');
+
+        Storage::fake('public');
+        Storage::disk('public')->put('media/physical.png', 'content');
+
+        $media = MediaLibrary::query()->create([
+            'disk' => 'public',
+            'path' => 'media/physical.png',
+            'type' => MediaLibrary::TYPE_IMAGE,
+            'source' => MediaLibrary::SOURCE_ADMIN,
+        ]);
+
+        $result = $media->delete();
+
+        $this->assertTrue((bool) $result);
+        $this->assertNull(MediaLibrary::withTrashed()->find($media->id));
+        $this->assertFalse(Storage::disk('public')->exists('media/physical.png'));
+    }
+
     public function test_force_delete_removes_physical_file(): void
     {
         Storage::fake('public');

@@ -288,7 +288,9 @@ RichEditor::make('content')
 - 上传（图片编辑器裁剪/缩放）、选择目录与类型、填写备注与自定义属性
 - 表格：缩略图、文件名（可搜索）、目录徽章、类型徽章、大小、上传时间
 - 筛选：目录、类型、已删除
-- 操作链：软删除 → 恢复 → 彻底删除（**删除即移除物理文件**，公开 URL 立即失效；如需恢复后 URL 仍有效，设 `MEDIA_DELETE_FILE_ON_DELETE=false` 保留文件）
+- 删除行为由配置控制（`MEDIA_DELETE_MODE`）：
+  - `soft`（默认）：删除进回收站，Trashed 筛选可恢复；物理文件默认同时移除（公开 URL 立即失效），设 `MEDIA_DELETE_FILE_ON_DELETE=false` 可保留文件以便恢复后 URL 仍有效
+  - `physical`：删除即删记录 + 物理文件，不经过回收站
 
 ## 媒体目录管理资源
 
@@ -336,7 +338,8 @@ php artisan vendor:publish --tag="filament-media-library-config"
 | `disk` | `MEDIA_DISK` | 有 `AWS_BUCKET` 则 `s3`，否则 `public` | 存储磁盘 |
 | `directory` | `MEDIA_DIRECTORY` | `media` | 存储根目录 |
 | `visibility` | `MEDIA_VISIBILITY` | `public` | 文件可见性 |
-| `delete_file_on_delete` | `MEDIA_DELETE_FILE_ON_DELETE` | `true` | 删除（含软删除）时是否移除物理文件 |
+| `delete_mode` | `MEDIA_DELETE_MODE` | `soft` | 删除模式：`soft`（回收站可恢复）/ `physical`（立即删记录+文件） |
+| `delete_file_on_delete` | `MEDIA_DELETE_FILE_ON_DELETE` | `true` | 软删除时是否移除物理文件 |
 | `image_process` | `MEDIA_COS_IMAGE_PROCESS` | `true` | COS 图片处理开关 |
 | `thumbnail_provider` | `MEDIA_THUMBNAIL_PROVIDER` | `LocalThumbnailProvider` | 缩略图 Provider 类 |
 | `public_urls` | 发布后手动填写 | `[]` | 按磁盘映射公开域名（磁盘 → CDN 前缀） |

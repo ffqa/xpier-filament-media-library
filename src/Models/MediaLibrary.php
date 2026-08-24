@@ -78,6 +78,33 @@ class MediaLibrary extends Model
         return (string) config('filament-media-library.disk', 'public');
     }
 
+    /**
+     * Deletion mode of the "delete" action: 'soft' (default, restorable)
+     * or 'physical' (record and file removed immediately).
+     */
+    public static function deletionMode(): string
+    {
+        return (string) config('filament-media-library.delete_mode', 'soft');
+    }
+
+    /**
+     * In 'physical' mode a plain delete() also removes the record and its
+     * physical file immediately (force delete), so every caller — the
+     * resource actions, bulk actions and programmatic deletes — respects
+     * the configured deletion mode.
+     *
+     * The isForceDeleting() guard prevents recursion: SoftDeletes::forceDelete()
+     * calls $this->delete() internally after setting the forceDeleting flag.
+     */
+    public function delete(): ?bool
+    {
+        if (static::deletionMode() === 'physical' && ! $this->isForceDeleting()) {
+            return $this->forceDelete();
+        }
+
+        return parent::delete();
+    }
+
     public static function typeOptions(): array
     {
         return [
