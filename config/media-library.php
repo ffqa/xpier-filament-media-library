@@ -20,12 +20,23 @@ return [
     /**
      * Public URL resolution for "private write, public read" setups.
      *
-     * - 'public_url': fixed base URL (CDN / public bucket domain) prepended to
-     *   the stored path. Files stay on a private disk but are served publicly.
+     * - 'public_urls': per-disk public base URL map. Files stay on a private
+     *   disk (or private bucket) but are served through the mapped public
+     *   CDN / bucket domain. Example:
+     *       'public_urls' => [
+     *           'private_s3' => 'https://cdn.example.com',
+     *           'r2' => 'https://pub-xxxx.r2.dev',
+     *       ],
+     * - 'public_url': fallback base URL used for disks without a mapping
+     *   (kept as MEDIA_PUBLIC_URL for simple single-CDN setups).
      * - 'url_resolver': custom class implementing MediaUrlResolver. Takes
-     *   precedence over 'public_url'; returns null to fall back to the
-     *   default Storage::disk()->url() behavior.
+     *   precedence over both; return null to fall back to the default
+     *   Storage::disk()->url() behavior.
      */
+    'public_urls' => [
+        // 'private_s3' => 'https://cdn.example.com',
+    ],
+
     'public_url' => env('MEDIA_PUBLIC_URL'),
 
     'url_resolver' => env('MEDIA_URL_RESOLVER'),

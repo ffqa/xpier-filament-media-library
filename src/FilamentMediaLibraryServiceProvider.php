@@ -4,8 +4,8 @@ namespace Xpier\FilamentMediaLibrary;
 
 use Illuminate\Support\ServiceProvider;
 use Xpier\FilamentMediaLibrary\Support\MediaUrlResolver;
-use Xpier\FilamentMediaLibrary\Support\Providers\CdnUrlResolver;
 use Xpier\FilamentMediaLibrary\Support\Providers\LocalThumbnailProvider;
+use Xpier\FilamentMediaLibrary\Support\Providers\MultiDiskUrlResolver;
 use Xpier\FilamentMediaLibrary\Support\ThumbnailProvider;
 
 class FilamentMediaLibraryServiceProvider extends ServiceProvider
@@ -52,21 +52,10 @@ class FilamentMediaLibraryServiceProvider extends ServiceProvider
                 return $app->make($resolver);
             }
 
-            $publicUrl = (string) config('filament-media-library.public_url');
-
-            if ($publicUrl !== '') {
-                return new CdnUrlResolver($publicUrl);
-            }
-
-            // No resolver configured: resolve to null so the model falls back
-            // to Storage::disk($disk)->url($path).
-            return new class implements MediaUrlResolver
-            {
-                public function url(string $disk, string $path): ?string
-                {
-                    return null;
-                }
-            };
+            return new MultiDiskUrlResolver(
+                publicUrls: (array) config('filament-media-library.public_urls', []),
+                defaultPublicUrl: (string) config('filament-media-library.public_url') ?: null,
+            );
         });
     }
 }

@@ -197,32 +197,44 @@ MediaPicker::make('cover_image')
     }),
 ```
 
-### 8. 字段级磁盘
+### 8. 字段级磁盘与可见性
 
-默认上传到全局配置的磁盘（`MEDIA_DISK`）。个别字段可覆盖：
+默认上传到全局配置的磁盘（`MEDIA_DISK`）与可见性（`MEDIA_VISIBILITY`）。个别字段可覆盖：
 
 ```php
 MediaPicker::make('cover_image')
-    ->disk('private_s3'), // 该字段的上传写入指定磁盘
+    ->disk('private_s3')        // 该字段的上传写入指定磁盘
+    ->visibility('private'),    // 该字段的上传可见性（public | private）
 ```
 
 ### 9. 私有写、公有读（CDN / 公开域名）
 
-典型场景：文件存储在**私有**磁盘（或私有 bucket），但对外通过 **CDN / 公开域名**访问。默认配置下 `Storage::url()` 返回的私有地址会 403。
+典型场景：文件存储在**私有**磁盘（或私有 bucket），但对外通过 **CDN / 公开域名**访问。默认配置下 `Storage::url()` 返回的私有地址会 403。三种方式：
 
-本包支持两种方式：
+**方式一：按磁盘映射公开域名（多磁盘推荐）**
 
-**方式一：配置公开域名前缀（最简单）**
+发布配置文件后，在 `config/filament-media-library.php` 中按磁盘配置：
+
+```php
+'public_urls' => [
+    'private_s3' => 'https://cdn.example.com',
+    'r2' => 'https://pub-xxxx.r2.dev',
+],
+```
+
+每个磁盘的媒体 `url` 属性自动解析为 `{映射域名}/{存储路径}`，与底层磁盘的可见性无关 —— 文件留在私有磁盘，对外走各自的公开域名。
+
+**方式二：单一公开域名（最简单）**
 
 ```env
 MEDIA_PUBLIC_URL=https://cdn.example.com
 ```
 
-所有媒体的 `url` 属性将解析为 `https://cdn.example.com/{存储路径}`，与底层磁盘的可见性无关。文件仍在私有磁盘，对外走公开域名。
+未在 `public_urls` 中映射的磁盘都使用该前缀。
 
 > 提示：如果磁盘本身已配置了公开地址（如 S3 的 `AWS_URL` 或 R2 的公开 bucket 域名），`Storage::url()` 已经返回公开 URL，无需额外配置。
 
-**方式二：自定义 URL 解析器**
+**方式三：自定义 URL 解析器（最高优先级）**
 
 ```php
 // config/filament-media-library.php
@@ -251,7 +263,7 @@ public function url(string $disk, string $path): ?string
 }
 ```
 
-解析优先级：`url_resolver` 类 > `public_url` 前缀 > 默认 `Storage::url()`。
+**完整解析链**：`url_resolver` 类 → `public_urls[磁盘]` → `public_url` 全局默认 → `Storage::url()`。
 
 ## 媒体库管理资源
 
@@ -310,8 +322,9 @@ php artisan vendor:publish --tag="filament-media-library-config"
 | `visibility` | `MEDIA_VISIBILITY` | `public` | 文件可见性 |
 | `image_process` | `MEDIA_COS_IMAGE_PROCESS` | `true` | COS 图片处理开关 |
 | `thumbnail_provider` | `MEDIA_THUMBNAIL_PROVIDER` | `LocalThumbnailProvider` | 缩略图 Provider 类 |
-| `public_url` | `MEDIA_PUBLIC_URL` | *(空)* | 公开 URL 前缀（CDN/公开域名），实现私有写公有读 |
-| `url_resolver` | `MEDIA_URL_RESOLVER` | *(空)* | 自定义 `MediaUrlResolver` 类，优先于 `public_url` |
+| `public_urls` | 发布后手动填写 | `[]` | 按磁盘映射公开域名（磁盘 → CDN 前缀） |
+| `public_url` | `MEDIA_PUBLIC_URL` | *(空)* | 未映射磁盘的全局公开 URL 前缀 |
+| `url_resolver` | `MEDIA_URL_RESOLVER` | *(空)* | 自定义 `MediaUrlResolver` 类，最高优先级 |
 | `navigation_group` | `MEDIA_NAVIGATION_GROUP` | *(语言包)* | 导航分组；`null` 时回退到语言包 |
 | `navigation_sort` | `MEDIA_NAVIGATION_SORT` | `5` | 导航排序 |
 | `navigation_badge` | `MEDIA_NAVIGATION_BADGE` | `true` | 导航显示媒体数量徽章 |

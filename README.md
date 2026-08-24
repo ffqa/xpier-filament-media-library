@@ -204,30 +204,44 @@ MediaPicker::make('cover_image')
     }),
 ```
 
-#### Per-field disk
+#### Per-field disk and visibility
 
-Uploads default to the global disk (`MEDIA_DISK`). Override per field:
+Uploads default to the global disk (`MEDIA_DISK`) and visibility (`MEDIA_VISIBILITY`). Override per field:
 
 ```php
 MediaPicker::make('cover_image')
-    ->disk('private_s3'),
+    ->disk('private_s3')        // uploads go to this disk
+    ->visibility('private'),    // upload visibility (public | private)
 ```
 
 #### Private write, public read (CDN / public domain)
 
-Files live on a **private** disk (or private bucket) but are served through a **public CDN / domain**. By default `Storage::url()` returns the private address and public access 403s.
+Files live on a **private** disk (or private bucket) but are served through a **public CDN / domain**. By default `Storage::url()` returns the private address and public access 403s. Three options:
 
-**Option 1 — public URL prefix (simplest)**
+**Option 1 — per-disk public URL map (recommended for multiple disks)**
+
+Publish the config, then map each disk to its public domain:
+
+```php
+'public_urls' => [
+    'private_s3' => 'https://cdn.example.com',
+    'r2' => 'https://pub-xxxx.r2.dev',
+],
+```
+
+Every media `url` attribute on that disk resolves to `{mapped domain}/{path}`, regardless of the disk's visibility. Files stay on the private disk; each public domain serves them.
+
+**Option 2 — single public URL prefix (simplest)**
 
 ```env
 MEDIA_PUBLIC_URL=https://cdn.example.com
 ```
 
-Every media `url` attribute resolves to `https://cdn.example.com/{path}`, regardless of the underlying disk's visibility. Files stay on the private disk; the public domain serves them.
+Used as a fallback for any disk without a `public_urls` mapping.
 
 > Note: if the disk already has a public base URL configured (`AWS_URL` on S3, a public R2 bucket domain), `Storage::url()` already returns a public URL — nothing extra to configure.
 
-**Option 2 — custom URL resolver**
+**Option 3 — custom URL resolver (highest precedence)**
 
 ```php
 // config/filament-media-library.php
@@ -256,7 +270,7 @@ public function url(string $disk, string $path): ?string
 }
 ```
 
-Resolution order: `url_resolver` class > `public_url` prefix > default `Storage::url()`.
+**Resolution chain:** `url_resolver` class → `public_urls[disk]` → `public_url` default → `Storage::url()`.
 
 **Uploads inside the picker** go through `AdminMediaService`, land in the currently-browsed folder, and can be edited (crop/resize) before storing thanks to the built-in image editor.
 
@@ -318,8 +332,9 @@ php artisan vendor:publish --tag="filament-media-library-config"
 | `visibility` | `MEDIA_VISIBILITY` | `public` | File visibility |
 | `image_process` | `MEDIA_COS_IMAGE_PROCESS` | `true` | COS image processing toggle |
 | `thumbnail_provider` | `MEDIA_THUMBNAIL_PROVIDER` | `LocalThumbnailProvider` | Thumbnail URL generator class |
-| `public_url` | `MEDIA_PUBLIC_URL` | *(empty)* | Public URL prefix (CDN / public domain) for private-write/public-read setups |
-| `url_resolver` | `MEDIA_URL_RESOLVER` | *(empty)* | Custom `MediaUrlResolver` class; takes precedence over `public_url` |
+| `public_urls` | config file | `[]` | Per-disk public URL map (disk → CDN prefix) |
+| `public_url` | `MEDIA_PUBLIC_URL` | *(empty)* | Global public URL prefix for unmapped disks |
+| `url_resolver` | `MEDIA_URL_RESOLVER` | *(empty)* | Custom `MediaUrlResolver` class; highest precedence |
 | `navigation_group` | `MEDIA_NAVIGATION_GROUP` | *(lang file)* | Nav group label; `null` → locale-aware fallback |
 | `navigation_sort` | `MEDIA_NAVIGATION_SORT` | `5` | Nav sort order |
 | `navigation_badge` | `MEDIA_NAVIGATION_BADGE` | `true` | Show media count badge |
