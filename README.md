@@ -297,7 +297,7 @@ Manage the platform library at `/admin/media-library`:
 - Upload with image editor, pick folder + type, set alt-text/notes and custom properties
 - Table: thumbnail preview, filename (searchable), folder badge, type badge, size, uploaded-at
 - Filters: folder, type, trashed
-- Actions: soft delete → restore → force-delete (physical file is only removed on force-delete)
+- Actions: soft delete → restore → force-delete (**delete removes the physical file, so the public URL stops resolving immediately**; set `MEDIA_DELETE_FILE_ON_DELETE=false` to keep files so restored records keep working URLs)
 
 ### 3. Media Folders admin resource
 
@@ -346,6 +346,7 @@ php artisan vendor:publish --tag="filament-media-library-config"
 | `disk` | `MEDIA_DISK` | `s3` if `AWS_BUCKET`, else `public` | Filesystem disk |
 | `directory` | `MEDIA_DIRECTORY` | `media` | Root directory |
 | `visibility` | `MEDIA_VISIBILITY` | `public` | File visibility |
+| `delete_file_on_delete` | `MEDIA_DELETE_FILE_ON_DELETE` | `true` | Remove the physical file on delete (incl. soft delete) |
 | `image_process` | `MEDIA_COS_IMAGE_PROCESS` | `true` | COS image processing toggle |
 | `thumbnail_provider` | `MEDIA_THUMBNAIL_PROVIDER` | `LocalThumbnailProvider` | Thumbnail URL generator class |
 | `public_urls` | config file | `[]` | Per-disk public URL map (disk → CDN prefix) |

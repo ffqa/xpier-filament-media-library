@@ -10,6 +10,16 @@ return [
 
     'visibility' => env('MEDIA_VISIBILITY', 'public'),
 
+    /**
+     * Whether a soft delete also removes the physical file from the disk.
+     * Enabled by default so deleted media URLs stop resolving immediately;
+     * disable to keep files so restored records keep working URLs.
+     */
+    'delete_file_on_delete' => filter_var(
+        env('MEDIA_DELETE_FILE_ON_DELETE', true),
+        FILTER_VALIDATE_BOOLEAN,
+    ),
+
     'image_process' => filter_var(
         env('MEDIA_COS_IMAGE_PROCESS', true),
         FILTER_VALIDATE_BOOLEAN,

@@ -52,6 +52,18 @@ class MediaLibrary extends Model
 
     protected static function booted(): void
     {
+        // Soft delete also removes the physical file by default, so a deleted
+        // media URL stops resolving immediately. Set the
+        // 'filament-media-library.delete_file_on_delete' config to false to
+        // keep files for restorable records.
+        static::deleting(function (self $media): void {
+            if (! (bool) config('filament-media-library.delete_file_on_delete', true)) {
+                return;
+            }
+
+            Storage::disk($media->disk)->delete($media->path);
+        });
+
         static::forceDeleting(function (self $media): void {
             Storage::disk($media->disk)->delete($media->path);
         });

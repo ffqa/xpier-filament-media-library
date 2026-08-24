@@ -78,7 +78,7 @@ class MediaLibraryTest extends TestCase
         $this->assertSame('https://cdn.example.com/media/test.png', $media->url);
     }
 
-    public function test_soft_delete_keeps_physical_file(): void
+    public function test_soft_delete_removes_physical_file_by_default(): void
     {
         Storage::fake('public');
         Storage::disk('public')->put('media/soft-delete.png', 'content');
@@ -93,9 +93,29 @@ class MediaLibraryTest extends TestCase
         $media->delete();
 
         $this->assertSoftDeleted('media_library', ['id' => $media->id]);
-        $this->assertTrue(Storage::disk('public')->exists('media/soft-delete.png'));
+        $this->assertFalse(Storage::disk('public')->exists('media/soft-delete.png'));
         $this->assertNull(MediaLibrary::query()->find($media->id));
         $this->assertNotNull(MediaLibrary::withTrashed()->find($media->id));
+    }
+
+    public function test_soft_delete_keeps_physical_file_when_disabled(): void
+    {
+        config()->set('filament-media-library.delete_file_on_delete', false);
+
+        Storage::fake('public');
+        Storage::disk('public')->put('media/soft-delete-keep.png', 'content');
+
+        $media = MediaLibrary::query()->create([
+            'disk' => 'public',
+            'path' => 'media/soft-delete-keep.png',
+            'type' => MediaLibrary::TYPE_IMAGE,
+            'source' => MediaLibrary::SOURCE_ADMIN,
+        ]);
+
+        $media->delete();
+
+        $this->assertSoftDeleted('media_library', ['id' => $media->id]);
+        $this->assertTrue(Storage::disk('public')->exists('media/soft-delete-keep.png'));
     }
 
     public function test_force_delete_removes_physical_file(): void
