@@ -2,7 +2,7 @@
     $statePath = $getStatePath();
     $selected = $getState();
     $isMultiple = $is_multiple ?? false;
-    $selectedIds = $isMultiple ? collect(Arr::wrap($selected))->map(fn ($id): string => (string) $id)->all() : [];
+    $selectedIds = $isMultiple ? collect(\Illuminate\Support\Arr::wrap($selected))->map(fn ($id): string => (string) $id)->all() : [];
     $browser = $browser ?? [
         'current' => \Xpier\FilamentMediaLibrary\Components\MediaPicker::FOLDER_ROOT,
         'breadcrumbs' => [],
@@ -364,9 +364,11 @@
                     @else
                         @php
                             $id = (string) ($entry['id'] ?? '');
+                            $entryUrl = (string) ($entry['url'] ?? '');
                             $isSelected = $isMultiple
                                 ? in_array($id, $selectedIds, true)
-                                : (filled($selected) && (string) $selected === $id);
+                                : (filled($selected)
+                                    && ((string) $selected === $id || (string) $selected === $entryUrl));
                             $name = (string) ($entry['name'] ?? '');
                             $note = trim((string) ($entry['note'] ?? ''));
                             $tip = $note !== '' ? ($name."\n".$note) : $name;

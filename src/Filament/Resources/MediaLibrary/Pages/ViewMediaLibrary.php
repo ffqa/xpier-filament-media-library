@@ -16,7 +16,7 @@ class ViewMediaLibrary extends ViewRecord
     {
         return [
             Action::make('edit')
-                ->label('编辑')
+                ->label(__('filament-actions::edit.single.label'))
                 ->icon(Heroicon::OutlinedPencilSquare)
                 ->url(fn () => static::getResource()::getUrl('edit', ['record' => $this->getRecord()])),
             DeleteAction::make(),
