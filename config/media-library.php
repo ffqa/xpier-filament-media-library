@@ -10,6 +10,9 @@ return [
 
     'visibility' => env('MEDIA_VISIBILITY', 'public'),
 
+    /** Max upload size in megabytes (server-side enforced). */
+    'max_size' => (float) env('MEDIA_MAX_SIZE', 20),
+
     /**
      * Deletion mode of the "delete" action on the Media Library resource.
      *
@@ -71,6 +74,12 @@ return [
     ),
 
     'default_module' => env('MEDIA_DEFAULT_MODULE', 'general'),
+
+    /**
+     * User model used by the media.user() relation. Falls back to the
+     * application's auth provider model.
+     */
+    'user_model' => env('MEDIA_USER_MODEL'),
 
     'folder_presets' => [],
 

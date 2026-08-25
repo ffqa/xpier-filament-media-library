@@ -325,7 +325,11 @@
             type="button"
             class="fi-mpg-upload-btn"
             @disabled(! ($browser['can_upload'] ?? false))
-            title="{{ ($browser['can_upload'] ?? false) ? __('filament-media-library::media-library.picker.upload_to_current') : __('filament-media-library::media-library.picker.upload_disabled_search') }}"
+            title="{{ ($browser['can_upload'] ?? false)
+                ? __('filament-media-library::media-library.picker.upload_to_current')
+                : (($browser['current'] ?? '') === \Xpier\FilamentMediaLibrary\Components\MediaPicker::FOLDER_ALL
+                    ? __('filament-media-library::media-library.picker.upload_disabled_all')
+                    : __('filament-media-library::media-library.picker.upload_disabled_search')) }}"
             x-on:click="
                 const modal = $el.closest('.fi-modal-window') ?? $el.closest('[role=dialog]') ?? document;
                 const input = modal.querySelector('.fi-media-picker-file-upload input[type=file]');

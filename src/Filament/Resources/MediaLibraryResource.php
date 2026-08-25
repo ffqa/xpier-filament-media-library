@@ -96,6 +96,7 @@ class MediaLibraryResource extends Resource
                             ->openable()
                             ->downloadable()
                             ->acceptedFileTypes(['image/*', 'video/*', 'application/pdf'])
+                            ->maxSize((int) ((float) config('filament-media-library.max_size', 20) * 1024))
                             ->imageEditor()
                             ->storeFiles(false)
                             ->dehydrated(false)
@@ -159,7 +160,8 @@ class MediaLibraryResource extends Resource
                 ImageColumn::make('url')
                     ->label(__('filament-media-library::media-library.media_library.preview'))
                     ->square()
-                    ->visibleFrom('md'),
+                    ->visibleFrom('md')
+                    ->visible(fn (MediaLibrary $record): bool => $record->type === MediaLibrary::TYPE_IMAGE),
                 TextColumn::make('original_name')
                     ->label(__('filament-media-library::media-library.media_library.upload_file'))
                     ->searchable()

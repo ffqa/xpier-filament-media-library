@@ -155,4 +155,12 @@ class MediaFolderTest extends TestCase
         $this->assertCount(1, MediaFolder::rootFolders());
         $this->assertCount(2, MediaFolder::rootFolders(activeOnly: false));
     }
+
+    public function test_resolve_storage_path_excludes_inactive_folders_by_default(): void
+    {
+        MediaFolder::query()->create(['code' => 'hidden', 'name' => '隐藏', 'sort' => 0, 'is_active' => false]);
+
+        $this->assertNull(MediaFolder::resolveStoragePath('hidden'));
+        $this->assertSame('hidden', MediaFolder::resolveStoragePath('hidden', activeOnly: false));
+    }
 }

@@ -17,7 +17,7 @@ class FilamentMediaLibraryServiceProvider extends ServiceProvider
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'filament-media-library');
 
         $this->publishes([
-            __DIR__.'/../config/media-library.php' => config_path('media-library.php'),
+            __DIR__.'/../config/media-library.php' => config_path('filament-media-library.php'),
         ], 'filament-media-library-config');
 
         $this->publishes([

@@ -43,6 +43,23 @@ class CosThumbnailProvider implements ThumbnailProvider
             return true;
         }
 
+        // Also treat hosts mapped via public_urls / public_url (CDN domains
+        // fronting the bucket) as processable, so imageMogr2 parameters keep
+        // working when the COS URL is rewritten to a custom domain.
+        foreach (array_merge(
+            (array) config('filament-media-library.public_urls', []),
+            [(string) config('filament-media-library.public_url', '')],
+        ) as $base) {
+            if ($base === '') {
+                continue;
+            }
+
+            $baseHost = strtolower((string) (parse_url($base, PHP_URL_HOST) ?: ''));
+            if ($baseHost !== '' && $baseHost === $host) {
+                return true;
+            }
+        }
+
         $configured = (string) config('filesystems.disks.s3.url', '');
         if ($configured !== '') {
             $configuredHost = strtolower((string) (parse_url($configured, PHP_URL_HOST) ?: ''));

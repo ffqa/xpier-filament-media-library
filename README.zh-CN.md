@@ -281,6 +281,14 @@ RichEditor::make('content')
 
 工具栏出现「插入媒体」按钮 → 打开弹窗（内含 MediaPicker：目录浏览 / 搜索 / 上传）→ 选中图片插入到光标处（Tiptap image 节点，自动带上 `alt_text`）。已选中图片时按钮高亮。
 
+### 10. 上传安全
+
+`acceptedFileTypes()` 只是前端提示（FilePond），包在 `AdminMediaService::storeUpload()` 里做了**服务端强制校验**：
+
+- **扩展名白名单**（按媒体类型），基于 MIME 检测结果落盘 —— 名为 `evil.php` 的图片内容会以 `.png` 落盘，客户端扩展名不参与存储
+- **大小上限**：`MEDIA_MAX_SIZE`（默认 20 MB），超限抛异常
+- 两处 FileUpload（后台上传 + 弹窗上传）同步加了前端 `maxSize` 提示
+
 ## 媒体库管理资源
 
 `/admin/media-library`：
@@ -338,6 +346,7 @@ php artisan vendor:publish --tag="filament-media-library-config"
 | `disk` | `MEDIA_DISK` | 有 `AWS_BUCKET` 则 `s3`，否则 `public` | 存储磁盘 |
 | `directory` | `MEDIA_DIRECTORY` | `media` | 存储根目录 |
 | `visibility` | `MEDIA_VISIBILITY` | `public` | 文件可见性 |
+| `max_size` | `MEDIA_MAX_SIZE` | `20` | 上传大小上限（MB，服务端强制校验） |
 | `delete_mode` | `MEDIA_DELETE_MODE` | `soft` | 删除模式：`soft`（回收站可恢复）/ `physical`（立即删记录+文件） |
 | `delete_file_on_delete` | `MEDIA_DELETE_FILE_ON_DELETE` | `true` | 软删除时是否移除物理文件 |
 | `image_process` | `MEDIA_COS_IMAGE_PROCESS` | `true` | COS 图片处理开关 |
@@ -410,7 +419,7 @@ composer install        # 安装 testbench / phpunit
 vendor/bin/phpunit      # 运行测试套件
 ```
 
-42 个测试覆盖：模型（软删除保留物理文件、彻底删除移除文件、事件派发、URL 解析、目录路径与嵌套校验）、上传服务（磁盘/可见性/目录规范化）、URL 解析器（按磁盘映射、全局回退、自定义类）、缩略图 Provider（本地直出、COS imageMogr2）、MediaPicker 组件（多选、relationship 钩子注册、字段级磁盘/可见性、选中媒体解析）。
+50 个测试覆盖：模型（软删除文件行为、物理删除模式、事件派发、URL 解析、目录路径与嵌套校验）、上传服务（**服务端扩展名白名单与大小限制**、磁盘/可见性/目录规范化）、URL 解析器（按磁盘映射、全局回退、自定义类）、缩略图 Provider（本地直出、COS imageMogr2）、MediaPicker 组件（多选、relationship 钩子注册、字段级磁盘/可见性、选中媒体解析）。
 
 ## 与其他方案对比
 

@@ -145,6 +145,26 @@ class MediaPickerTest extends TestCase
         $this->assertSame('old.png', $selected['name']);
     }
 
+    public function test_get_selected_media_resolves_multiple_urls_preview_only(): void
+    {
+        [$livewire, $picker] = $this->mountPicker(multiple: true);
+        $picker->storeMode('url');
+        $livewire->data = [
+            'media_id' => [
+                'https://cdn.example.com/a.png',
+                'https://cdn.example.com/b.png',
+            ],
+        ];
+
+        $selected = $picker->getSelectedMedia();
+
+        $this->assertNotNull($selected);
+        $this->assertCount(2, $selected);
+        $this->assertNull($selected[0]['id']);
+        $this->assertSame('https://cdn.example.com/a.png', $selected[0]['url']);
+        $this->assertSame('b.png', $selected[1]['name']);
+    }
+
     /**
      * @return array{0: SchemaHost, 1: MediaPicker}
      */

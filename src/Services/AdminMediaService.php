@@ -19,11 +19,17 @@ class AdminMediaService
         ?string $disk = null,
         ?string $visibility = null,
     ): MediaLibrary {
+        $this->assertValidUpload($file, $type);
+
         $folder = $this->normalizeFolder($folder);
         $disk = $disk ?: MediaLibrary::defaultDisk();
         $visibility = $visibility ?: (string) config('filament-media-library.visibility', 'public');
         $directory = $this->buildDirectory($folder, $type);
-        $extension = $file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'bin';
+
+        // Resolve the extension from the detected MIME type, never from the
+        // client-provided original filename, so a file named "evil.php" with
+        // image content cannot land on the disk as PHP.
+        $extension = strtolower((string) ($file->guessExtension() ?: 'bin'));
         $filename = Str::uuid()->toString().'.'.ltrim($extension, '.');
         $path = $file->storeAs($directory, $filename, [
             'disk' => $disk,
@@ -46,6 +52,37 @@ class AdminMediaService
             'folder' => $folder,
             'user_id' => $userId,
         ]);
+    }
+
+    /**
+     * Server-side upload validation. Filament's acceptedFileTypes() is
+     * client-side only (FilePond), so this is the real security boundary.
+     */
+    protected function assertValidUpload(UploadedFile|TemporaryUploadedFile $file, string $type): void
+    {
+        $maxBytes = (int) round((float) config('filament-media-library.max_size', 20) * 1024 * 1024);
+
+        if ($file->getSize() > $maxBytes) {
+            throw new \RuntimeException('The file exceeds the maximum allowed size of '.((int) config('filament-media-library.max_size', 20)).' MB.');
+        }
+
+        $extension = strtolower((string) ($file->guessExtension() ?: $file->getClientOriginalExtension()));
+
+        if (! in_array($extension, $this->allowedExtensions($type), true)) {
+            throw new \RuntimeException("File type [{$extension}] is not allowed for media type [{$type}].");
+        }
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function allowedExtensions(string $type): array
+    {
+        return match ($type) {
+            MediaLibrary::TYPE_IMAGE => ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif'],
+            MediaLibrary::TYPE_VIDEO => ['mp4', 'webm', 'mov', 'avi', 'mkv'],
+            default => ['pdf', 'zip', 'rar', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'],
+        };
     }
 
     public function deleteFile(MediaLibrary $media): void

@@ -32,9 +32,10 @@ class CreateMediaLibrary extends CreateRecord
             userId: auth()->id(),
         );
 
-        if (filled($state['alt_text'] ?? null)) {
+        if (filled($state['alt_text'] ?? null) || filled($state['custom_properties'] ?? null)) {
             $media->update([
-                'alt_text' => $state['alt_text'],
+                'alt_text' => $state['alt_text'] ?? null,
+                'custom_properties' => $state['custom_properties'] ?? [],
             ]);
         }
 

@@ -290,6 +290,8 @@ An "Insert Media" toolbar button opens a modal with a MediaPicker (folder browse
 
 **Uploads inside the picker** go through `AdminMediaService`, land in the currently-browsed folder, and can be edited (crop/resize) before storing thanks to the built-in image editor.
 
+> **Upload security:** `acceptedFileTypes()` is client-side only (FilePond). The package enforces a server-side extension whitelist (per media type, based on the MIME-detected extension — a file named `evil.php` with image content is stored as `.png`) and a size limit (`MEDIA_MAX_SIZE`, default 20 MB) in `AdminMediaService::storeUpload()`.
+
 ### 2. Media Library admin resource
 
 Manage the platform library at `/admin/media-library`:
@@ -348,6 +350,7 @@ php artisan vendor:publish --tag="filament-media-library-config"
 | `disk` | `MEDIA_DISK` | `s3` if `AWS_BUCKET`, else `public` | Filesystem disk |
 | `directory` | `MEDIA_DIRECTORY` | `media` | Root directory |
 | `visibility` | `MEDIA_VISIBILITY` | `public` | File visibility |
+| `max_size` | `MEDIA_MAX_SIZE` | `20` | Max upload size in MB (server-side enforced) |
 | `delete_mode` | `MEDIA_DELETE_MODE` | `soft` | Deletion mode: `soft` (trash, restorable) / `physical` (record + file removed immediately) |
 | `delete_file_on_delete` | `MEDIA_DELETE_FILE_ON_DELETE` | `true` | Remove the physical file on soft delete |
 | `image_process` | `MEDIA_COS_IMAGE_PROCESS` | `true` | COS image processing toggle |
@@ -420,7 +423,7 @@ composer install        # installs testbench / phpunit
 vendor/bin/phpunit      # runs the test suite
 ```
 
-42 tests cover: models (soft delete keeps the physical file, force delete removes it, event dispatch, URL resolution, folder paths and nesting validation), the upload service (disk/visibility/folder normalization), URL resolvers (per-disk map, global fallback, custom class), thumbnail providers (local passthrough, COS imageMogr2), and the MediaPicker component (multiple, relationship hook registration, per-field disk/visibility, selected-media resolution).
+50 tests cover: models (soft delete file behavior, physical delete mode, event dispatch, URL resolution, folder paths and nesting validation), the upload service (server-side extension whitelist and size limit, disk/visibility/folder normalization), URL resolvers (per-disk map, global fallback, custom class), thumbnail providers (local passthrough, COS imageMogr2), and the MediaPicker component (multiple, relationship hook registration, per-field disk/visibility, selected-media resolution).
 
 ## How it compares
 

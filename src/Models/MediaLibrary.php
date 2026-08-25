@@ -52,24 +52,19 @@ class MediaLibrary extends Model
 
     protected static function booted(): void
     {
-        // Soft delete also removes the physical file by default, so a deleted
-        // media URL stops resolving immediately. Set the
-        // 'filament-media-library.delete_file_on_delete' config to false to
-        // keep files for restorable records.
-        static::deleting(function (self $media): void {
-            if (! (bool) config('filament-media-library.delete_file_on_delete', true)) {
-                return;
+        // The physical file is removed after the database delete succeeded
+        // (deleted event), so a failed DELETE never loses the file. It is
+        // removed on every delete (soft or hard) unless
+        // 'filament-media-library.delete_file_on_delete' is false.
+        static::deleted(function (self $media): void {
+            if ($media->isForceDeleting() || (bool) config('filament-media-library.delete_file_on_delete', true)) {
+                Storage::disk($media->disk)->delete($media->path);
             }
 
-            Storage::disk($media->disk)->delete($media->path);
-        });
-
-        static::forceDeleting(function (self $media): void {
-            Storage::disk($media->disk)->delete($media->path);
+            \Xpier\FilamentMediaLibrary\Events\MediaDeleted::dispatch($media, $media->isForceDeleting());
         });
 
         static::created(fn (self $media) => \Xpier\FilamentMediaLibrary\Events\MediaUploaded::dispatch($media));
-        static::deleted(fn (self $media) => \Xpier\FilamentMediaLibrary\Events\MediaDeleted::dispatch($media, $media->isForceDeleting()));
         static::restored(fn (self $media) => \Xpier\FilamentMediaLibrary\Events\MediaRestored::dispatch($media));
     }
 
@@ -131,7 +126,9 @@ class MediaLibrary extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(
+            (string) config('filament-media-library.user_model', config('auth.providers.users.model', \Illuminate\Foundation\Auth\User::class))
+        );
     }
 
     public function getUrlAttribute(): ?string

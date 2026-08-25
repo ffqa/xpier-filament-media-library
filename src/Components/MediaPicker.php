@@ -187,15 +187,21 @@ class MediaPicker extends Field
 
             $relationship = $record->{$component->relationshipName}();
 
-            if ($relationship instanceof BelongsToMany) {
-                $component->state(
-                    $relationship->pluck($component->relationshipKey)
-                        ->map(fn ($key): string => (string) $key)
-                        ->all()
-                );
+                if ($relationship instanceof BelongsToMany) {
+                    $query = $relationship->getQuery();
 
-                return;
-            }
+                    if ($component->orderColumn !== null) {
+                        $query->orderBy($relationship->qualifyPivotColumn($component->orderColumn));
+                    }
+
+                    $component->state(
+                        $query->pluck($component->relationshipKey)
+                            ->map(fn ($key): string => (string) $key)
+                            ->all()
+                    );
+
+                    return;
+                }
 
             if ($relationship instanceof BelongsTo) {
                 $related = $relationship->getResults();
@@ -387,40 +393,54 @@ class MediaPicker extends Field
         $thumbnail = app(ThumbnailProvider::class);
 
         if ($this->isMultiple()) {
-            $ids = collect(Arr::wrap($state))
-                ->filter(fn ($id): bool => filled($id) && is_numeric($id))
-                ->map(fn ($id): int => (int) $id)
-                ->values();
+            $items = [];
+            $numericIds = [];
 
-            if ($ids->isEmpty()) {
-                return null;
+            foreach (Arr::wrap($state) as $value) {
+                if (filled($value) && is_numeric($value)) {
+                    $numericIds[] = (int) $value;
+
+                    continue;
+                }
+
+                // storeMode('url'): the state holds URL strings. The preview
+                // still renders them; grid highlighting requires ids, so
+                // document that combination as preview-only.
+                if (is_string($value) && filled($value)) {
+                    $items[] = [
+                        'id' => null,
+                        'url' => $value,
+                        'thumb' => $thumbnail->thumbnail($value, 480) ?: $value,
+                        'name' => basename(parse_url($value, PHP_URL_PATH) ?: $value),
+                        'note' => '',
+                    ];
+                }
             }
 
-            $mediaById = MediaLibrary::query()
-                ->whereIn('id', $ids->all())
-                ->get()
-                ->keyBy('id');
+            if ($numericIds !== []) {
+                $mediaById = MediaLibrary::query()
+                    ->whereIn('id', $numericIds)
+                    ->get()
+                    ->keyBy('id');
 
-            return $ids
-                ->map(function (int $id) use ($mediaById, $thumbnail): ?array {
+                foreach ($numericIds as $id) {
                     $media = $mediaById->get($id);
                     if (! $media instanceof MediaLibrary || blank($media->url)) {
-                        return null;
+                        continue;
                     }
 
                     $url = (string) $media->url;
-
-                    return [
+                    $items[] = [
                         'id' => $id,
                         'url' => $url,
                         'thumb' => $thumbnail->thumbnail($url, 480) ?: $url,
                         'name' => $media->original_name ?: basename($media->path),
                         'note' => (string) ($media->alt_text ?? ''),
                     ];
-                })
-                ->filter()
-                ->values()
-                ->all();
+                }
+            }
+
+            return $items === [] ? null : $items;
         }
 
         if (blank($state)) {
@@ -493,10 +513,12 @@ class MediaPicker extends Field
                     ->hiddenLabel()
                     ->acceptedFileTypes(fn (): array => match ($this->getMediaType()) {
                         MediaLibrary::TYPE_VIDEO => ['video/mp4', 'video/webm', 'video/quicktime'],
+                        MediaLibrary::TYPE_FILE => ['application/pdf', 'application/zip', 'application/x-rar-compressed', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'text/plain', 'text/csv'],
                         null => ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime'],
                         default => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
                     })
                     ->maxFiles(1)
+                    ->maxSize((int) ((float) config('filament-media-library.max_size', 20) * 1024))
                     ->previewable(false)
                     ->imageEditor()
                     ->imagePreviewHeight('0')

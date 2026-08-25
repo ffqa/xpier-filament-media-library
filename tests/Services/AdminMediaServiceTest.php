@@ -104,4 +104,61 @@ class AdminMediaServiceTest extends TestCase
         $this->assertSame('application/pdf', $media->mime_type);
         $this->assertSame(1024, $media->size);
     }
+
+    public function test_store_upload_uses_detected_extension_not_client_name(): void
+    {
+        Storage::fake('public');
+
+        // A real PNG payload with a misleading ".php" filename must be stored
+        // with the MIME-detected extension, never the client-provided one.
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+        $tmp = tempnam(sys_get_temp_dir(), 'ml');
+        file_put_contents($tmp, $png);
+
+        $file = new \Illuminate\Http\UploadedFile($tmp, 'evil.php', 'image/png', null, true);
+
+        $media = app(AdminMediaService::class)->storeUpload(
+            file: $file,
+            folder: 'general',
+            type: MediaLibrary::TYPE_IMAGE,
+        );
+
+        $this->assertStringEndsWith('.png', $media->path);
+        $this->assertSame('png', $media->extension);
+        @unlink($tmp);
+    }
+
+    public function test_store_upload_rejects_disallowed_extension(): void
+    {
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->createWithContent('shell.php', '<?php echo 1;');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('is not allowed');
+
+        app(AdminMediaService::class)->storeUpload(
+            file: $file,
+            folder: 'general',
+            type: MediaLibrary::TYPE_FILE,
+        );
+    }
+
+    public function test_store_upload_rejects_oversized_file(): void
+    {
+        config()->set('filament-media-library.max_size', 0.001); // ~1 KB
+
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->create('big.png', 10); // 10 KB
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('maximum allowed size');
+
+        app(AdminMediaService::class)->storeUpload(
+            file: $file,
+            folder: 'general',
+            type: MediaLibrary::TYPE_IMAGE,
+        );
+    }
 }

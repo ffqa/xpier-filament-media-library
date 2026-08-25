@@ -110,14 +110,14 @@ class MediaFolder extends Model
         return $options;
     }
 
-    public static function resolveStoragePath(string $folderKey): ?string
+    public static function resolveStoragePath(string $folderKey, bool $activeOnly = true): ?string
     {
         $key = Str::of($folderKey)->trim()->value();
         if ($key === '') {
             return null;
         }
 
-        foreach (static::options(activeOnly: false) as $path => $name) {
+        foreach (static::options(activeOnly: $activeOnly) as $path => $name) {
             if ($path === $key) {
                 return $path;
             }

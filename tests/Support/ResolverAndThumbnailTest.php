@@ -93,6 +93,19 @@ class ResolverAndThumbnailTest extends TestCase
         );
     }
 
+    public function test_cos_thumbnail_provider_handles_public_urls_mapped_domain(): void
+    {
+        config()->set('filament-media-library.public_urls', [
+            'cos' => 'https://cdn.example.com',
+        ]);
+
+        $provider = new CosThumbnailProvider();
+
+        $url = $provider->thumbnail('https://cdn.example.com/media/img.png', 400, 75);
+
+        $this->assertStringContainsString('imageMogr2/thumbnail/400x', $url);
+    }
+
     public function test_cos_thumbnail_provider_respects_image_process_switch(): void
     {
         config()->set('filament-media-library.image_process', false);
