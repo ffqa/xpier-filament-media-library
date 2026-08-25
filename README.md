@@ -123,8 +123,8 @@ public static function form(Schema $schema): Schema
 | `mediaType()` | Filter | Upload accept |
 |---|---|---|
 | `'image'` | images only | `image/jpeg, png, webp, gif` |
-| `'file'` | files only | — |
-| `'video'` | videos only | `video/mp4, webm, quicktime` |
+| `'file'` | files only | `pdf, zip, rar, doc(x), xls(x), ppt(x), txt, csv` |
+| `'video'` | videos only | `mp4, webm, mov, avi, mkv` |
 | `null` | everything | images + videos |
 
 #### Single selection with a BelongsTo relationship (recommended)
@@ -459,7 +459,7 @@ Curator is the closest competitor — a Filament media manager with picker, rela
 | Soft deletes | ❌ | ✅ |
 | `->relationship()` picker | ✅ | ✅ (BelongsTo + BelongsToMany) |
 | `->multiple()` picker | ✅ | ✅ (with pivot ordering) |
-| RichEditor attach button | ✅ | ❌ *roadmap* |
+| RichEditor attach button | ✅ | ✅ `AttachMediaPlugin` |
 | Image editor (crop/resize) | ✅ | ✅ (built-in FileUpload) |
 | Multi-disk per field | ✅ | ✅ `->disk()` |
 | Signed URLs | ✅ Glide | ✅ custom `MediaUrlResolver` |

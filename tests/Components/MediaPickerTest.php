@@ -6,9 +6,9 @@ use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Livewire\Component;
-use Livewire\Livewire;
 use ReflectionProperty;
 use Xpier\FilamentMediaLibrary\Components\MediaPicker;
+use Xpier\FilamentMediaLibrary\Models\MediaFolder;
 use Xpier\FilamentMediaLibrary\Models\MediaLibrary;
 use Xpier\FilamentMediaLibrary\Tests\TestCase;
 
@@ -163,6 +163,18 @@ class MediaPickerTest extends TestCase
         $this->assertNull($selected[0]['id']);
         $this->assertSame('https://cdn.example.com/a.png', $selected[0]['url']);
         $this->assertSame('b.png', $selected[1]['name']);
+    }
+
+    public function test_disabled_folder_falls_back_to_root_in_browser(): void
+    {
+        MediaFolder::query()->create(['code' => 'hidden', 'name' => '隐藏', 'sort' => 0, 'is_active' => false]);
+
+        [$livewire, $picker] = $this->mountPicker();
+        $livewire->data = ['picker_folder' => 'hidden'];
+
+        $browser = $picker->getBrowserState('hidden');
+
+        $this->assertSame(MediaPicker::FOLDER_ROOT, $browser['current']);
     }
 
     /**

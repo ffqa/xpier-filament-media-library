@@ -163,4 +163,12 @@ class MediaFolderTest extends TestCase
         $this->assertNull(MediaFolder::resolveStoragePath('hidden'));
         $this->assertSame('hidden', MediaFolder::resolveStoragePath('hidden', activeOnly: false));
     }
+
+    public function test_find_by_storage_path_can_filter_inactive(): void
+    {
+        $folder = MediaFolder::query()->create(['code' => 'hidden', 'name' => '隐藏', 'sort' => 0, 'is_active' => false]);
+
+        $this->assertNull(MediaFolder::findByStoragePath('hidden', activeOnly: true));
+        $this->assertTrue(MediaFolder::findByStoragePath('hidden')->is($folder));
+    }
 }

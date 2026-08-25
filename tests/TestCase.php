@@ -2,7 +2,17 @@
 
 namespace Xpier\FilamentMediaLibrary\Tests;
 
+use BladeUI\Heroicons\BladeHeroiconsServiceProvider;
+use BladeUI\Icons\BladeIconsServiceProvider;
+use Filament\Actions\ActionsServiceProvider;
+use Filament\FilamentServiceProvider;
+use Filament\Forms\FormsServiceProvider;
+use Filament\Notifications\NotificationsServiceProvider;
+use Filament\Schemas\SchemasServiceProvider;
+use Filament\Support\SupportServiceProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\ViewErrorBag;
+use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 use Xpier\FilamentMediaLibrary\FilamentMediaLibraryServiceProvider;
 
@@ -15,15 +25,15 @@ abstract class TestCase extends BaseTestCase
     protected function getPackageProviders($app): array
     {
         return [
-            \BladeUI\Icons\BladeIconsServiceProvider::class,
-            \BladeUI\Heroicons\BladeHeroiconsServiceProvider::class,
-            \Livewire\LivewireServiceProvider::class,
-            \Filament\Support\SupportServiceProvider::class,
-            \Filament\Schemas\SchemasServiceProvider::class,
-            \Filament\Forms\FormsServiceProvider::class,
-            \Filament\Actions\ActionsServiceProvider::class,
-            \Filament\Notifications\NotificationsServiceProvider::class,
-            \Filament\FilamentServiceProvider::class,
+            BladeIconsServiceProvider::class,
+            BladeHeroiconsServiceProvider::class,
+            LivewireServiceProvider::class,
+            SupportServiceProvider::class,
+            SchemasServiceProvider::class,
+            FormsServiceProvider::class,
+            ActionsServiceProvider::class,
+            NotificationsServiceProvider::class,
+            FilamentServiceProvider::class,
             FilamentMediaLibraryServiceProvider::class,
         ];
     }
@@ -45,6 +55,6 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('filament-media-library.default_module', 'general');
 
         // Livewire 4's SupportValidation reads the shared error bag during render.
-        $app['view']->share('errors', new \Illuminate\Support\ViewErrorBag);
+        $app['view']->share('errors', new ViewErrorBag);
     }
 }

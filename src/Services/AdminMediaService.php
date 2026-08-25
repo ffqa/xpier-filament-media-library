@@ -5,6 +5,7 @@ namespace Xpier\FilamentMediaLibrary\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Xpier\FilamentMediaLibrary\Models\MediaFolder;
 use Xpier\FilamentMediaLibrary\Models\MediaLibrary;
@@ -19,17 +20,18 @@ class AdminMediaService
         ?string $disk = null,
         ?string $visibility = null,
     ): MediaLibrary {
-        $this->assertValidUpload($file, $type);
+        $extension = $this->detectExtension($file);
+
+        $this->assertValidUpload($file, $type, $extension);
 
         $folder = $this->normalizeFolder($folder);
         $disk = $disk ?: MediaLibrary::defaultDisk();
         $visibility = $visibility ?: (string) config('filament-media-library.visibility', 'public');
         $directory = $this->buildDirectory($folder, $type);
 
-        // Resolve the extension from the detected MIME type, never from the
-        // client-provided original filename, so a file named "evil.php" with
+        // The extension comes from the MIME-detected value (never from the
+        // client-provided original filename), so a file named "evil.php" with
         // image content cannot land on the disk as PHP.
-        $extension = strtolower((string) ($file->guessExtension() ?: 'bin'));
         $filename = Str::uuid()->toString().'.'.ltrim($extension, '.');
         $path = $file->storeAs($directory, $filename, [
             'disk' => $disk,
@@ -57,20 +59,33 @@ class AdminMediaService
     /**
      * Server-side upload validation. Filament's acceptedFileTypes() is
      * client-side only (FilePond), so this is the real security boundary.
+     * Throws a ValidationException so Livewire renders a form error instead
+     * of a 500 page.
      */
-    protected function assertValidUpload(UploadedFile|TemporaryUploadedFile $file, string $type): void
+    protected function assertValidUpload(UploadedFile|TemporaryUploadedFile $file, string $type, string $extension): void
     {
         $maxBytes = (int) round((float) config('filament-media-library.max_size', 20) * 1024 * 1024);
 
         if ($file->getSize() > $maxBytes) {
-            throw new \RuntimeException('The file exceeds the maximum allowed size of '.((int) config('filament-media-library.max_size', 20)).' MB.');
+            throw ValidationException::withMessages([
+                'upload' => __('filament-media-library::media-library.upload.too_large', ['size' => (int) config('filament-media-library.max_size', 20)]),
+            ]);
         }
-
-        $extension = strtolower((string) ($file->guessExtension() ?: $file->getClientOriginalExtension()));
 
         if (! in_array($extension, $this->allowedExtensions($type), true)) {
-            throw new \RuntimeException("File type [{$extension}] is not allowed for media type [{$type}].");
+            throw ValidationException::withMessages([
+                'upload' => __('filament-media-library::media-library.upload.type_not_allowed', ['type' => $extension]),
+            ]);
         }
+    }
+
+    /**
+     * Single source of truth for the stored extension: MIME-detected first,
+     * client-provided extension as a last resort (both whitelisted above).
+     */
+    protected function detectExtension(UploadedFile|TemporaryUploadedFile $file): string
+    {
+        return strtolower((string) ($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'bin'));
     }
 
     /**

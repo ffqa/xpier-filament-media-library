@@ -21,8 +21,7 @@ return [
     ],
 
     'media_library' => [
-        'upload_section' => '上传到平台素材库',
-        'upload_section_description' => '平台配图统一管理。文章/广告配图请用「从媒体库选择」弹窗（可在弹窗内上传）。',
+        'upload_section' => '上传到平台素材库',        'upload_section_description' => '平台配图统一管理。文章/广告配图请用「从媒体库选择」弹窗（可在弹窗内上传）。',
         'upload_file' => '上传文件',
         'preview' => '预览',
         'no_preview' => '暂无预览',
@@ -38,6 +37,11 @@ return [
         'size' => '大小',
         'uploaded_at' => '上传时间',
         'uncategorized' => '未分类',
+    ],
+
+    'upload' => [
+        'too_large' => '文件超过最大允许大小 :size MB。',
+        'type_not_allowed' => '文件类型 :type 不允许上传。',
     ],
 
     'media_folder' => [

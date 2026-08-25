@@ -21,8 +21,7 @@ class MultiDiskUrlResolver implements MediaUrlResolver
     public function __construct(
         protected array $publicUrls = [],
         protected ?string $defaultPublicUrl = null,
-    ) {
-    }
+    ) {}
 
     public function url(string $disk, string $path): ?string
     {

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Xpier\FilamentMediaLibrary\Filament\Resources\MediaFolderResource;
 use Xpier\FilamentMediaLibrary\Models\MediaFolder;
@@ -39,21 +40,21 @@ class MediaPicker extends Field
 
     protected string $view = 'filament-media-library::media-picker';
 
-    protected string | Closure | null $mediaType = MediaLibrary::TYPE_IMAGE;
+    protected string|Closure|null $mediaType = MediaLibrary::TYPE_IMAGE;
 
     /** Default platform folder code (articles / pets / …). */
-    protected string | Closure $module = 'general';
+    protected string|Closure $module = 'general';
 
     /** 'id' stores media_library.id; 'url' stores the resolved URL string (backward-compatible with URL/path columns). */
     protected string $storeMode = 'id';
 
     /** Filesystem disk for uploads; falls back to the package config. */
-    protected string | Closure | null $disk = null;
+    protected string|Closure|null $disk = null;
 
     /** File visibility for uploads ('public' | 'private'); falls back to the package config. */
-    protected string | Closure | null $visibility = null;
+    protected string|Closure|null $visibility = null;
 
-    protected bool | Closure $isMultiple = false;
+    protected bool|Closure $isMultiple = false;
 
     /** Eloquent relationship name used to load/save the selected media (e.g. 'featuredImage', 'gallery'). */
     protected ?string $relationshipName = null;
@@ -75,14 +76,14 @@ class MediaPicker extends Field
         ]);
     }
 
-    public function mediaType(string | Closure | null $type): static
+    public function mediaType(string|Closure|null $type): static
     {
         $this->mediaType = $type;
 
         return $this;
     }
 
-    public function module(string | Closure $module): static
+    public function module(string|Closure $module): static
     {
         $this->module = $module;
 
@@ -96,7 +97,7 @@ class MediaPicker extends Field
         return $this;
     }
 
-    public function disk(string | Closure | null $disk): static
+    public function disk(string|Closure|null $disk): static
     {
         $this->disk = $disk;
 
@@ -108,7 +109,7 @@ class MediaPicker extends Field
         return (string) ($this->evaluate($this->disk) ?: MediaLibrary::defaultDisk());
     }
 
-    public function visibility(string | Closure | null $visibility): static
+    public function visibility(string|Closure|null $visibility): static
     {
         $this->visibility = $visibility;
 
@@ -120,7 +121,7 @@ class MediaPicker extends Field
         return (string) ($this->evaluate($this->visibility) ?: config('filament-media-library.visibility', 'public'));
     }
 
-    public function multiple(bool | Closure $condition = true): static
+    public function multiple(bool|Closure $condition = true): static
     {
         $this->isMultiple = $condition;
 
@@ -187,21 +188,21 @@ class MediaPicker extends Field
 
             $relationship = $record->{$component->relationshipName}();
 
-                if ($relationship instanceof BelongsToMany) {
-                    $query = $relationship->getQuery();
+            if ($relationship instanceof BelongsToMany) {
+                $query = $relationship->getQuery();
 
-                    if ($component->orderColumn !== null) {
-                        $query->orderBy($relationship->qualifyPivotColumn($component->orderColumn));
-                    }
-
-                    $component->state(
-                        $query->pluck($component->relationshipKey)
-                            ->map(fn ($key): string => (string) $key)
-                            ->all()
-                    );
-
-                    return;
+                if ($component->orderColumn !== null) {
+                    $query->orderBy($relationship->qualifyPivotColumn($component->orderColumn));
                 }
+
+                $component->state(
+                    $query->pluck($component->relationshipKey)
+                        ->map(fn ($key): string => (string) $key)
+                        ->all()
+                );
+
+                return;
+            }
 
             if ($relationship instanceof BelongsTo) {
                 $related = $relationship->getResults();
@@ -512,7 +513,7 @@ class MediaPicker extends Field
                 FileUpload::make('upload_new')
                     ->hiddenLabel()
                     ->acceptedFileTypes(fn (): array => match ($this->getMediaType()) {
-                        MediaLibrary::TYPE_VIDEO => ['video/mp4', 'video/webm', 'video/quicktime'],
+                        MediaLibrary::TYPE_VIDEO => ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'],
                         MediaLibrary::TYPE_FILE => ['application/pdf', 'application/zip', 'application/x-rar-compressed', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'text/plain', 'text/csv'],
                         null => ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime'],
                         default => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
@@ -634,7 +635,19 @@ class MediaPicker extends Field
             return self::FOLDER_ALL;
         }
 
-        return MediaFolder::resolveStoragePath($folder) ?? $folder;
+        $resolved = MediaFolder::resolveStoragePath($folder);
+        if ($resolved !== null) {
+            return $resolved;
+        }
+
+        // An existing but disabled folder is not browsable: fall back to the
+        // root instead of resolving it, so uploads don't silently land
+        // somewhere unexpected.
+        if (MediaFolder::findByStoragePath($folder, activeOnly: false)?->is_active === false) {
+            return self::FOLDER_ROOT;
+        }
+
+        return $folder;
     }
 
     protected function uploadFolderFromState(mixed $folder): string
@@ -729,7 +742,7 @@ class MediaPicker extends Field
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, MediaLibrary>|iterable<MediaLibrary>  $files
+     * @param  Collection<int, MediaLibrary>|iterable<MediaLibrary>  $files
      * @return list<array{id: int|string, url: string, thumb: string, name: string, note: string}>
      */
     protected function mapMediaFiles(iterable $files): array

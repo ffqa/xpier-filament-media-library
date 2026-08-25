@@ -40,6 +40,11 @@ return [
         'uncategorized' => 'Uncategorized',
     ],
 
+    'upload' => [
+        'too_large' => 'The file exceeds the maximum allowed size of :size MB.',
+        'type_not_allowed' => 'File type :type is not allowed.',
+    ],
+
     'media_folder' => [
         'parent_folder' => 'Parent Folder',
         'parent_helper' => 'Leave empty for a top-level category; subfolders can only be nested one level deep.',

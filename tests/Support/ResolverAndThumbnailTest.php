@@ -3,16 +3,16 @@
 namespace Xpier\FilamentMediaLibrary\Tests\Support;
 
 use Xpier\FilamentMediaLibrary\Support\MediaUrlResolver;
+use Xpier\FilamentMediaLibrary\Support\Providers\CosThumbnailProvider;
 use Xpier\FilamentMediaLibrary\Support\Providers\LocalThumbnailProvider;
 use Xpier\FilamentMediaLibrary\Support\Providers\MultiDiskUrlResolver;
-use Xpier\FilamentMediaLibrary\Support\Providers\CosThumbnailProvider;
 use Xpier\FilamentMediaLibrary\Tests\TestCase;
 
 class ResolverAndThumbnailTest extends TestCase
 {
     public function test_multi_disk_resolver_returns_null_when_unconfigured(): void
     {
-        $resolver = new MultiDiskUrlResolver();
+        $resolver = new MultiDiskUrlResolver;
 
         $this->assertNull($resolver->url('s3', 'media/test.png'));
     }
@@ -67,7 +67,7 @@ class ResolverAndThumbnailTest extends TestCase
 
     public function test_local_thumbnail_provider_returns_original_url(): void
     {
-        $provider = new LocalThumbnailProvider();
+        $provider = new LocalThumbnailProvider;
 
         $this->assertSame('https://cdn.example.com/img.png', $provider->thumbnail('https://cdn.example.com/img.png', 320, 80));
         $this->assertNull($provider->thumbnail(null));
@@ -75,7 +75,7 @@ class ResolverAndThumbnailTest extends TestCase
 
     public function test_cos_thumbnail_provider_generates_image_mogr2_url(): void
     {
-        $provider = new CosThumbnailProvider();
+        $provider = new CosThumbnailProvider;
 
         $url = $provider->thumbnail('https://bucket-123.cos.ap-guangzhou.myqcloud.com/media/img.png', 400, 75);
 
@@ -85,7 +85,7 @@ class ResolverAndThumbnailTest extends TestCase
 
     public function test_cos_thumbnail_provider_ignores_non_cos_urls(): void
     {
-        $provider = new CosThumbnailProvider();
+        $provider = new CosThumbnailProvider;
 
         $this->assertSame(
             'https://cdn.example.com/img.png',
@@ -99,7 +99,7 @@ class ResolverAndThumbnailTest extends TestCase
             'cos' => 'https://cdn.example.com',
         ]);
 
-        $provider = new CosThumbnailProvider();
+        $provider = new CosThumbnailProvider;
 
         $url = $provider->thumbnail('https://cdn.example.com/media/img.png', 400, 75);
 
@@ -110,7 +110,7 @@ class ResolverAndThumbnailTest extends TestCase
     {
         config()->set('filament-media-library.image_process', false);
 
-        $provider = new CosThumbnailProvider();
+        $provider = new CosThumbnailProvider;
 
         $this->assertSame(
             'https://bucket-123.cos.ap-guangzhou.myqcloud.com/media/img.png',

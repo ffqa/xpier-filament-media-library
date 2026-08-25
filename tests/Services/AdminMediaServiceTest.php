@@ -4,6 +4,7 @@ namespace Xpier\FilamentMediaLibrary\Tests\Services;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Xpier\FilamentMediaLibrary\Models\MediaFolder;
 use Xpier\FilamentMediaLibrary\Models\MediaLibrary;
 use Xpier\FilamentMediaLibrary\Services\AdminMediaService;
@@ -115,7 +116,7 @@ class AdminMediaServiceTest extends TestCase
         $tmp = tempnam(sys_get_temp_dir(), 'ml');
         file_put_contents($tmp, $png);
 
-        $file = new \Illuminate\Http\UploadedFile($tmp, 'evil.php', 'image/png', null, true);
+        $file = new UploadedFile($tmp, 'evil.php', 'image/png', null, true);
 
         $media = app(AdminMediaService::class)->storeUpload(
             file: $file,
@@ -134,14 +135,18 @@ class AdminMediaServiceTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent('shell.php', '<?php echo 1;');
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('is not allowed');
+        try {
+            app(AdminMediaService::class)->storeUpload(
+                file: $file,
+                folder: 'general',
+                type: MediaLibrary::TYPE_FILE,
+            );
 
-        app(AdminMediaService::class)->storeUpload(
-            file: $file,
-            folder: 'general',
-            type: MediaLibrary::TYPE_FILE,
-        );
+            $this->fail('Expected a ValidationException.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('upload', $e->errors());
+            $this->assertStringContainsString('php', $e->errors()['upload'][0]);
+        }
     }
 
     public function test_store_upload_rejects_oversized_file(): void
@@ -152,13 +157,17 @@ class AdminMediaServiceTest extends TestCase
 
         $file = UploadedFile::fake()->create('big.png', 10); // 10 KB
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('maximum allowed size');
+        try {
+            app(AdminMediaService::class)->storeUpload(
+                file: $file,
+                folder: 'general',
+                type: MediaLibrary::TYPE_IMAGE,
+            );
 
-        app(AdminMediaService::class)->storeUpload(
-            file: $file,
-            folder: 'general',
-            type: MediaLibrary::TYPE_IMAGE,
-        );
+            $this->fail('Expected a ValidationException.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('upload', $e->errors());
+            $this->assertStringContainsString('MB', $e->errors()['upload'][0]);
+        }
     }
 }

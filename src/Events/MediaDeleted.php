@@ -15,6 +15,5 @@ class MediaDeleted
     public function __construct(
         public MediaLibrary $media,
         public bool $force = false,
-    ) {
-    }
+    ) {}
 }

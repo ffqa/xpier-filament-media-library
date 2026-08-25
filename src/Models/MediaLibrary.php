@@ -6,8 +6,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
+use Xpier\FilamentMediaLibrary\Events\MediaDeleted;
+use Xpier\FilamentMediaLibrary\Events\MediaRestored;
+use Xpier\FilamentMediaLibrary\Events\MediaUploaded;
+use Xpier\FilamentMediaLibrary\Support\MediaUrlResolver;
 
 class MediaLibrary extends Model
 {
@@ -58,14 +63,20 @@ class MediaLibrary extends Model
         // 'filament-media-library.delete_file_on_delete' is false.
         static::deleted(function (self $media): void {
             if ($media->isForceDeleting() || (bool) config('filament-media-library.delete_file_on_delete', true)) {
-                Storage::disk($media->disk)->delete($media->path);
+                try {
+                    Storage::disk($media->disk)->delete($media->path);
+                } catch (Throwable $exception) {
+                    // The record is gone but the file may remain; report it
+                    // so orphaned files stay traceable.
+                    report($exception);
+                }
             }
 
-            \Xpier\FilamentMediaLibrary\Events\MediaDeleted::dispatch($media, $media->isForceDeleting());
+            MediaDeleted::dispatch($media, $media->isForceDeleting());
         });
 
-        static::created(fn (self $media) => \Xpier\FilamentMediaLibrary\Events\MediaUploaded::dispatch($media));
-        static::restored(fn (self $media) => \Xpier\FilamentMediaLibrary\Events\MediaRestored::dispatch($media));
+        static::created(fn (self $media) => MediaUploaded::dispatch($media));
+        static::restored(fn (self $media) => MediaRestored::dispatch($media));
     }
 
     public static function defaultDisk(): string
@@ -127,7 +138,7 @@ class MediaLibrary extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(
-            (string) config('filament-media-library.user_model', config('auth.providers.users.model', \Illuminate\Foundation\Auth\User::class))
+            (string) config('filament-media-library.user_model', config('auth.providers.users.model', User::class))
         );
     }
 
@@ -140,7 +151,7 @@ class MediaLibrary extends Model
             return null;
         }
 
-        $resolver = app(\Xpier\FilamentMediaLibrary\Support\MediaUrlResolver::class);
+        $resolver = app(MediaUrlResolver::class);
         $resolved = $resolver->url($disk, $path);
 
         if (filled($resolved)) {

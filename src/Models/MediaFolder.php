@@ -126,7 +126,7 @@ class MediaFolder extends Model
         return null;
     }
 
-    public static function findByStoragePath(string $path): ?self
+    public static function findByStoragePath(string $path, bool $activeOnly = false): ?self
     {
         $path = Str::of($path)->trim('/')->value();
         if ($path === '') {
@@ -136,6 +136,7 @@ class MediaFolder extends Model
         return static::query()
             ->with('parent')
             ->get()
+            ->filter(fn (self $folder): bool => ! $activeOnly || (bool) $folder->is_active)
             ->first(fn (self $folder): bool => $folder->storage_path === $path);
     }
 
