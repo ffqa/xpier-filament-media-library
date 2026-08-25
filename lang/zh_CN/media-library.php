@@ -21,7 +21,8 @@ return [
     ],
 
     'media_library' => [
-        'upload_section' => '上传到平台素材库',        'upload_section_description' => '平台配图统一管理。文章/广告配图请用「从媒体库选择」弹窗（可在弹窗内上传）。',
+        'upload_section' => '上传到平台素材库',
+        'upload_section_description' => '平台配图统一管理。文章/广告配图请用「从媒体库选择」弹窗（可在弹窗内上传）。',
         'upload_file' => '上传文件',
         'preview' => '预览',
         'no_preview' => '暂无预览',

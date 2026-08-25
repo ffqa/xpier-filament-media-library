@@ -52,6 +52,8 @@ return [
      *       ],
      * - 'public_url': fallback base URL used for disks without a mapping
      *   (kept as MEDIA_PUBLIC_URL for simple single-CDN setups).
+     * - Note: with CosThumbnailProvider enabled, every mapped domain must be
+     *   COS (or COS-compatible), since imageMogr2 is appended to image URLs.
      * - 'url_resolver': custom class implementing MediaUrlResolver. Takes
      *   precedence over both; return null to fall back to the default
      *   Storage::disk()->url() behavior.

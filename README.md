@@ -386,6 +386,8 @@ interface ThumbnailProvider
 MEDIA_THUMBNAIL_PROVIDER=Xpier\FilamentMediaLibrary\Support\Providers\CosThumbnailProvider
 ```
 
+> **Note:** `CosThumbnailProvider` appends `?imageMogr2/...` to every image URL (including domains mapped via `public_urls` / `public_url`). Only enable it when all served domains are Tencent COS (or a COS-compatible CDN that understands `imageMogr2`); otherwise keep `LocalThumbnailProvider` or set `MEDIA_COS_IMAGE_PROCESS=false`.
+
 Custom providers are bound through the container (a singleton), so resolving is cheap:
 
 ```php
@@ -423,7 +425,7 @@ composer install        # installs testbench / phpunit
 vendor/bin/phpunit      # runs the test suite
 ```
 
-50 tests cover: models (soft delete file behavior, physical delete mode, event dispatch, URL resolution, folder paths and nesting validation), the upload service (server-side extension whitelist and size limit, disk/visibility/folder normalization), URL resolvers (per-disk map, global fallback, custom class), thumbnail providers (local passthrough, COS imageMogr2), and the MediaPicker component (multiple, relationship hook registration, per-field disk/visibility, selected-media resolution).
+52 tests cover: models (soft delete file behavior, physical delete mode, event dispatch, URL resolution, folder paths and nesting validation), the upload service (server-side extension whitelist and size limit, disk/visibility/folder normalization), URL resolvers (per-disk map, global fallback, custom class), thumbnail providers (local passthrough, COS imageMogr2), and the MediaPicker component (multiple, relationship hook registration, per-field disk/visibility, selected-media resolution).
 
 ## How it compares
 
