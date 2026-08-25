@@ -278,7 +278,19 @@
 
 <div
     class="fi-fo-media-picker-grid"
-    x-data="{ previewUrl: null, previewName: '' }"
+    x-data="{
+        previewUrl: null,
+        previewName: '',
+        pickedIds: @js($isMultiple ? $selectedIds : []),
+        togglePicked(id) {
+            const idx = this.pickedIds.indexOf(id)
+            if (idx >= 0) {
+                this.pickedIds.splice(idx, 1)
+            } else {
+                this.pickedIds.push(id)
+            }
+        }
+    }"
 >
     <div class="fi-mpg-toolbar">
         <div class="fi-mpg-crumbs">
@@ -330,7 +342,7 @@
 
     <p class="fi-mpg-meta">
         @if ($isMultiple)
-            {{ __('filament-media-library::media-library.picker.selected_count', ['count' => count($selectedIds)]) }}
+            <span x-text="pickedIds.length"></span>{{ __('filament-media-library::media-library.picker.selected_count_units') }}
             ·
         @endif
         @if ($isSearch)
@@ -373,13 +385,19 @@
                             $note = trim((string) ($entry['note'] ?? ''));
                             $tip = $note !== '' ? ($name."\n".$note) : $name;
                         @endphp
-                        <div class="fi-mpg-tile{{ $isSelected ? ' is-selected' : '' }}">
+                        <div
+                            class="fi-mpg-tile{{ $isMultiple ? '' : ($isSelected ? ' is-selected' : '') }}"
+                            :class="{ 'is-selected': {{ $isMultiple ? 'pickedIds.includes('.\Illuminate\Support\Js::from($id)->toHtml().')' : 'false' }} }"
+                        >
                             <label class="fi-mpg-media-label" title="{{ $tip }}">
                                 <input
                                     type="{{ $isMultiple ? 'checkbox' : 'radio' }}"
                                     value="{{ $id }}"
                                     @checked($isSelected)
                                     {{ $applyStateBindingModifiers('wire:model') }}="{{ $statePath }}"
+                                    @if ($isMultiple)
+                                        x-on:change="togglePicked(@js($id))"
+                                    @endif
                                 />
                                 <img
                                     src="{{ $entry['thumb'] }}"
@@ -387,7 +405,9 @@
                                     loading="lazy"
                                 />
                             </label>
-                            @if ($isSelected)
+                            @if ($isMultiple)
+                                <span class="fi-mpg-check" x-show="pickedIds.includes(@js($id))" aria-hidden="true">✓</span>
+                            @elseif ($isSelected)
                                 <span class="fi-mpg-check" aria-hidden="true">✓</span>
                             @endif
                             <div class="fi-mpg-tip">

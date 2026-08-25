@@ -77,6 +77,7 @@ return [
         'manage_folders' => 'Manage Folders',
         'items_count' => ':count items',
         'selected_count' => ':count selected',
+        'selected_count_units' => ' selected',
     ],
 
     'types' => [

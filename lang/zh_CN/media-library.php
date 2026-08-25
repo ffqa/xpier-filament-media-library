@@ -77,6 +77,7 @@ return [
         'manage_folders' => '管理目录',
         'items_count' => ':count 项',
         'selected_count' => '已选 :count 项',
+        'selected_count_units' => '项已选',
     ],
 
     'types' => [
