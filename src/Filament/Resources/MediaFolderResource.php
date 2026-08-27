@@ -106,7 +106,7 @@ class MediaFolderResource extends Resource
                 TextColumn::make('storage_path')->label(__('filament-media-library::media-library.media_folder.storage_path'))->copyable(),
                 TextColumn::make('files_count')
                     ->label(__('filament-media-library::media-library.media_folder.files_count'))
-                    ->getStateUsing(fn (MediaFolder $record): int => $record->mediaFilesQuery()->count()),
+                    ->getStateUsing(fn (?MediaFolder $record): int => $record instanceof MediaFolder ? $record->mediaFilesQuery()->count() : 0),
                 TextColumn::make('sort')->label(__('filament-media-library::media-library.media_folder.sort'))->sortable(),
                 ToggleColumn::make('is_active')->label(__('filament-media-library::media-library.media_folder.is_active')),
                 TextColumn::make('updated_at')->label(__('filament-media-library::media-library.media_folder.updated_at'))->dateTime('Y-m-d H:i')->sortable(),

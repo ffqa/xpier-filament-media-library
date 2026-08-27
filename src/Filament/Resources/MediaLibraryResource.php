@@ -161,7 +161,7 @@ class MediaLibraryResource extends Resource
                     ->label(__('filament-media-library::media-library.media_library.preview'))
                     ->square()
                     ->visibleFrom('md')
-                    ->visible(fn (MediaLibrary $record): bool => $record->type === MediaLibrary::TYPE_IMAGE),
+                    ->visible(fn (?MediaLibrary $record): bool => $record instanceof MediaLibrary && $record->type === MediaLibrary::TYPE_IMAGE),
                 TextColumn::make('original_name')
                     ->label(__('filament-media-library::media-library.media_library.upload_file'))
                     ->searchable()
