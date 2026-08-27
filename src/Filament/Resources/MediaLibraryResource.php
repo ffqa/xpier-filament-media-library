@@ -169,14 +169,14 @@ class MediaLibraryResource extends Resource
                 TextColumn::make('folder')
                     ->label(__('filament-media-library::media-library.media_library.folder'))
                     ->badge()
-                    ->formatStateUsing(fn (?string $state, MediaLibrary $record): string => $record->folderLabel()),
+                    ->formatStateUsing(fn (?string $state, ?MediaLibrary $record): string => $record instanceof MediaLibrary ? $record->folderLabel() : (string) ($state ?? '')),
                 TextColumn::make('type')
                     ->label(__('filament-media-library::media-library.media_library.type'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => MediaLibrary::typeOptions()[$state] ?? (string) $state),
                 TextColumn::make('size')
                     ->label(__('filament-media-library::media-library.media_library.size'))
-                    ->formatStateUsing(fn (int $state): string => number_format($state / 1024, 1).' KB')
+                    ->formatStateUsing(fn (mixed $state): string => is_numeric($state) && $state > 0 ? number_format((float) $state / 1024, 1).' KB' : '-')
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->label(__('filament-media-library::media-library.media_library.uploaded_at'))
